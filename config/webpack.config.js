@@ -7,7 +7,7 @@ const isDev = true;
 module.exports = {
   mode: "development",
     entry: {
-        index: [path.resolve(__dirname, "./webpack-communication.js")]
+        index: ['react-hot-loader/patch', path.resolve(__dirname, "./webpack-communication.js")]
     },
     target: 'electron-renderer',
     resolve: {

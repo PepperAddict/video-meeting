@@ -9,6 +9,7 @@
             "browsers": ["last 2 versions"]
           },
           "debug": false,
+          "modules": false
         }
       ],
       "@babel/preset-typescript",

@@ -1,22 +1,20 @@
 
 const {app, BrowserWindow, Tray, Menu} = require('electron');
 const fs = require('fs')
+const path = require('path')
 
 let mainWindow = null;
-require('electron-reload')(__dirname + '../src/')
+require('electron-reload')(__dirname)
 app.on('ready', function() {
 
     mainWindow = new BrowserWindow({
       width: 1280,
       height: 720,
       autoHideMenuBar: true,
-      useContentSize: true,
-      resizable: false,
     });
 
-    mainWindow.loadURL(`http://localhost:8080`)
+    mainWindow.loadFile( "http://localhost:8080")
 
-    mainWindow.focus();
   
   });
 

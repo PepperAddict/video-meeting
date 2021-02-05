@@ -20,10 +20,10 @@ if (devServerEnabled) {
   const compiler = webpack(config);
 
 
-  config.entry.index.unshift("webpack-dev-server/client?http://0.0.0.0:8080")
-  config.entry.index.unshift("webpack/hot/only-dev-server")
+  config.entry.index.unshift("webpack-dev-server/client?http://localhost:8080")
+
   config.entry.index.unshift(
-    "webpack-hot-middleware/client?reload=true&timeout=1000"
+    "webpack-hot-middleware/client?reload=true"
   );
 
 
