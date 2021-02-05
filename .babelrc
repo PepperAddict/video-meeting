@@ -1,0 +1,26 @@
+{
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "useBuiltIns": "entry",
+          "corejs": 3,
+          "targets": {
+            "browsers": ["last 2 versions"]
+          },
+          "debug": false,
+        }
+      ],
+      "@babel/preset-typescript",
+      "@babel/preset-react"
+    ],
+    "plugins": [
+        ["@babel/plugin-proposal-decorators", { "legacy": true }],
+        ["@babel/plugin-proposal-class-properties", { "loose": true }],
+        ["@babel/plugin-transform-runtime", {
+        "corejs": false,
+        "helpers": true,
+        "regenerator": true,
+        "useESModules": false
+        }], ["react-hot-loader/babel"]]
+  }
