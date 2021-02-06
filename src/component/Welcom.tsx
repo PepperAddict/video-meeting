@@ -5,10 +5,7 @@ export default function Welcome() {
   return (
     <div className="welcome-container">
 
-      <header className="home-nav">
-Hey!
-      </header>
+    <h1>Welcome</h1>
     </div>
   );
-
 }

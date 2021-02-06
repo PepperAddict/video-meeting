@@ -1,84 +1,123 @@
-const path = require('path')
+const path = require("path");
+const webpack = require("webpack");
+const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const MiniCSSExtractPlugin = require("mini-css-extract-plugin");
 
-const HtmlWebpackPlugin = require('html-webpack-plugin')
-const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin')
-const MiniCSSExtractPlugin = require('mini-css-extract-plugin')
+
 const isDev = true;
 module.exports = {
   mode: "development",
-    entry: {
-        index: ['react-hot-loader/patch', path.resolve(__dirname, "./webpack-communication.js")]
+  entry: {
+    index: [
+     path.resolve(__dirname, "./webpack-communication.js")],
+  },
+  watchOptions: {
+    aggregateTimeout: 300,
+    poll: 1000,
+    ignored: /node_modules/
+  },
+  target: 'web',
+  resolve: {
+    alias: {
+      "react-dom": "@hot-loader/react-dom",
     },
-    target: 'electron-renderer',
-    resolve: {
-      alias: {
-        'react-dom': '@hot-loader/react-dom',
-      },
-      extensions: ['.ts', '.tsx', '.js', 'jsx']
+    extensions: [".ts", ".tsx", ".js", "jsx"],
+  },
+  output: {
+    filename: "bundle-script.js",
+    path: path.resolve(__dirname, "../dist/"),
+    publicPath: "/",
+    hotUpdateChunkFilename: 'hot-update.js',
+    hotUpdateMainFilename: 'hot-update.json'
+  },
+  devServer: {
+    publicPath: '/',
+    contentBase: path.resolve(__dirname, '../dist'),
+    hot: true,
+    overlay: true, 
+    noInfo: true,
+    stats: {
+      colors: true
     },
-    output: {
-        filename: 'bundle-script.js',
-        path: path.resolve(__dirname, '../dist/'),
-        publicPath: '/dist',
+    host: process.env.HOST || '0.0.0.0',
+    port: process.env.PORT || 8080,
+    historyApiFallback: {
+      index: '/'
+    }
+  },
+  devtool: 'inline-source-map' ,
+  module: {
+    rules: [
+
+      {
+        test: /\.tsx?$/,
+        exclude: /node_modules/,
+        use: [
+          {loader: 'react-hot-loader/webpack'},
+          {
+            loader: "babel-loader",
+            options: {
+              cacheDirectory: true,
+              babelrc: false,
+              presets: [
+                "@babel/preset-env",
+                "@babel/preset-typescript",
+                "@babel/preset-react",
+              ],
+              plugins: [
+                ["@babel/plugin-proposal-decorators", { legacy: true }],
+                ["@babel/plugin-proposal-class-properties", { loose: true }],
+                "react-hot-loader/babel",
+                "@babel/plugin-transform-runtime",
+              ],
+            },
+          },
+
+        ],
       },
 
-    module: {
-        rules: [
+      {
+        test: /\.styl$/,
+        use: (function () {
+          let separate = [
+            { loader: MiniCSSExtractPlugin.loader },
             {
-              test: /\.(j|t)sx?$/,
-                exclude: /node_modules/,
-                use: [
-                  {
-                    loader: "babel-loader",
-                    options: {
-                      cacheDirectory: true,
-                      babelrc: true,
-                    },
-
-                  },
-                ]
+              loader: "css-loader",
+              options: {
+                url: false,
               },
-
-              {
-                test: /\.styl$/,
-                use: (function() {
-                  let separate = [
-
-                    { loader: MiniCSSExtractPlugin.loader},
-                    { loader: 'css-loader',
-                      options: {
-                        url: false
-                      }},
-                    { loader: 'postcss-loader',
-                      options: {
-                        indent: 'postcss',
-                        plugins: [
-                          require('autoprefixer')({
-                            'overideBrowserslist': ['> 1%', 'last 2 versions']
-                          })
-                        ]
-                      }
-                    },
-                    { loader: 'stylus-loader'},
-
-                  ];
-        
-                  if (isDev) separate.unshift({loader: 'css-hot-loader'});
-                  return separate;
-                }())
+            },
+            {
+              loader: "postcss-loader",
+              options: {
+                indent: "postcss",
+                plugins: [
+                  require("autoprefixer")({
+                    overideBrowserslist: ["> 1%", "last 2 versions"],
+                  }),
+                ],
               },
+            },
+            { loader: "stylus-loader" },
+          ];
 
-        ]
-    },
-    plugins: [
-        new MiniCSSExtractPlugin({
-            filename: 'bundled-style.css',
-            chunkFilename: '[id].css'
-        }),
-        new ForkTsCheckerWebpackPlugin(),
-        new HtmlWebpackPlugin({
-            template: path.resolve(__dirname, "../src/index.html")
-        })
-
-    ]
-}
+          if (isDev) separate.unshift({ loader: "css-hot-loader" });
+          return separate;
+        })(),
+      },
+    ],
+  },
+  plugins:[
+    
+    new MiniCSSExtractPlugin({
+      filename: "bundled-style.css",
+      chunkFilename: "[id].css",
+    }),
+    //  new CleanWebpackPlugin(),
+    new HtmlWebpackPlugin({
+      template: path.resolve(__dirname, "../src/index.html"),
+    }),
+    new webpack.HotModuleReplacementPlugin(),
+  ],
+};

@@ -1,10 +1,8 @@
 
 const {app, BrowserWindow, Tray, Menu} = require('electron');
-const fs = require('fs')
-const path = require('path')
 
 let mainWindow = null;
-require('electron-reload')(__dirname)
+
 app.on('ready', function() {
 
     mainWindow = new BrowserWindow({
@@ -13,8 +11,7 @@ app.on('ready', function() {
       autoHideMenuBar: true,
     });
 
-    mainWindow.loadFile( "http://localhost:8080")
-
+    mainWindow.loadURL( "http://localhost:8080")
   
   });
 

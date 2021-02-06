@@ -1,12 +1,17 @@
-{
+{   "compileOnSave": true,
     "compilerOptions": {
         "outDir": "./dist/",
         "sourceMap": true,
         "noImplicitAny": false,
         "module": "commonjs",
-        "target": "es5",
+        "target": "es6",
         "jsx": "react",
-        "allowJs": true
+        "noLib": false,
+        "allowJs": true,
+        "esModuleInterop": true
     },
+    "files": [
+        "./src/component/React.tsx"
+    ],
     "include": ["./src/**/*"]
 }
