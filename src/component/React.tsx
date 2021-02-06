@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Route } from 'react-router-dom';
 
 
 // components
-import Welcome from './Welcom'
+import Welcome from './Welcome'
 import Room from './Room'
 
 const App = () => {
