@@ -11,7 +11,7 @@ app.on('ready', function() {
       autoHideMenuBar: true,
     });
 
-    mainWindow.loadURL( "http://localhost:8080")
+    mainWindow.loadURL(`file://${__dirname}/dist/index.html`)
   
   });
 

@@ -1,0 +1,10 @@
+{
+  "name": "electron",
+  "version": "1.0.0",
+  "description": "electron for this app",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "electron": "^11.2.3"
+  }
+}

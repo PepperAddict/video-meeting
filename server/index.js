@@ -1,74 +1,96 @@
+"use strict";
+
 const express = require("express");
-
 const app = express();
-const spdy = require("spdy");
+const router = express.Router();
 const path = require("path");
-const fs = require("fs");
-const server = require("http").Server(app);
-const io = require("socket.io")(server);
-const { v4: uuidV4 } = require("uuid");
 const bodyParser = require("body-parser");
-
-//livereload
-const livereload = require("livereload");
-const connectLivereload = require("connect-livereload");
-
-// open livereload high port and start to watch public directory for changes
-const liveReloadServer = livereload.createServer();
-liveReloadServer.watch(path.join(__dirname, "../src"));
-
-// ping browser on Express boot, once browser has reconnected and handshaken
-liveReloadServer.server.once("connection", () => {
-  setTimeout(() => {
-    liveReloadServer.refresh("/");
-  }, 100);
-});
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+
+//manage socket io
+const server = require("http").createServer()
+const io = require('socket.io')(server, {
+  cors: {
+    origin: "http://localhost:8080",
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+})
+server.listen(3000)
+
+
 //middlewware
-const devServerEnabled = true;
+const isDev = (process.env.NODE_ENV == "development") ? true : false;
 
+//webpack
+const webpack = require("webpack");
+const webpackDevMiddleware = require("webpack-dev-middleware");
 
-if (devServerEnabled) {
-  const webpackDevMiddleware = require("webpack-dev-middleware");
+const config = require("../config/webpack.config.js");
+const compiler = webpack(config);
+app.use(webpackDevMiddleware(compiler, config.devServer));
+
+if (isDev) {
   const webpackHotMiddleware = require("webpack-hot-middleware");
-  const config = require("../config/webpack.config.js");
-  const webpack = require("webpack");
-  const compiler = webpack(config);
-
-
-   config.entry.index.unshift("webpack-hot-middleware/client?reload=true");
-   config.entry.index.unshift("webpack/hot/only-dev-server");
-  config.entry.index.unshift("react-hot-loader/patch");
-
-   config.plugins.unshift(new webpack.HotModuleReplacementPlugin())
-
-  app.use(webpackDevMiddleware(compiler, config.devServer))
   app.use(webpackHotMiddleware(compiler));
 }
 
-app.use(connectLivereload());
-
 app.get("/", (req, res) => {
-
-  res.write(webpackDevMiddleware.fileSystem.readFileSync(path.join(__dirname, '/dist/', 'index.html')));
+  res.write(
+    webpackDevMiddleware.fileSystem.readFileSync(
+      path.join(__dirname, "/dist/", "index.html")
+    )
+  );
 });
 
-app.use("/room", (req, res) => {
-  res.sendFile(path.resolve(__dirname, "../dist/index.html"));
+//creating io and stuff 
+app.get("/room", (req, res) => {
+  res.sendFile(path.resolve(__dirname, "../dist/index.html"))
 });
+
+let interval;
+let rooms = {}
 
 io.on("connection", (socket) => {
-  socket.on("join-room", (roomId, userId) => {
-    console.log(roomId, userId);
+  const id = socket.id 
+
+  if (interval) {
+    clearInterval(interval);
+  }
+  interval = setInterval(() => getApiAndEmit(socket), 1000);
+
+  socket.on("disconnect", () => {
+    socket.emit('user-dc', socket.id)
+    clearInterval(interval);
   });
+
+  socket.on('join room', roomID => {
+    console.log(roomID)
+    if (rooms[roomID]) {
+      rooms[roomID].push(socket.id)
+    } else {
+      rooms[roomID] = [socket.id]
+    }
+
+    const otherUser = rooms[roomID].find(id => id !== socket.id);
+
+    if (otherUser) {
+      socket.emit('other user', otherUser);
+      socket.to(otherUser).emit('user joined', socket.id)
+    }
+
+  })
+
+  socket.emit('user-connected', socket.id)
 });
 
-app.listen("8080", () => {
-  console.log("server started");
-});
-
-if (module["hot"]) {
-  module["hot"].accept();
-}
+const getApiAndEmit = socket => {
+  const response = new Date();
+  // Emitting a new message. Will be consumed by the client
+  socket.emit("FromAPI", response);
+  
+};
+const port = process.env.PORT || 8080;
+app.listen(port, () => console.log(`Express server listening on port ${port}`));

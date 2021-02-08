@@ -4,8 +4,8 @@ import { BrowserRouter as Router, Route } from 'react-router-dom';
 
 
 // components
-import Welcome from './Welcom'
-import Room from './Room'
+import Welcome from './Welcome'
+import Room from './meeting/Room'
 
 const App = () => {
   return (
@@ -21,7 +21,6 @@ const App = () => {
 </Router>
   )
 }
-
 
 
 export default hot(App)
