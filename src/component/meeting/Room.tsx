@@ -8,6 +8,7 @@ const peer = new Peer()
 const socket = io(ENDPOINT);
 import '../../styles/room.styl'
 
+
 export default function Room(props) {
   const [response, setResponse] = useState("");
 

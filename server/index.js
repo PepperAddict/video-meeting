@@ -10,15 +10,15 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
 //manage socket io
-const server = require("http").createServer()
+const server = require("http").createServer(app)
 const io = require('socket.io')(server, {
-  cors: {
-    origin: "http://localhost:8080",
-    methods: ["GET", "POST"],
-    credentials: true
-  }
+    cors: {
+        origin: "http://localhost:8080",
+        methods: ["GET", "POST"],
+        credentials: true
+    }
 })
-server.listen(3000)
+server.listen(3000, '127.0.0.1')
 
 
 //middlewware
@@ -33,64 +33,64 @@ const compiler = webpack(config);
 app.use(webpackDevMiddleware(compiler, config.devServer));
 
 if (isDev) {
-  const webpackHotMiddleware = require("webpack-hot-middleware");
-  app.use(webpackHotMiddleware(compiler));
+    const webpackHotMiddleware = require("webpack-hot-middleware");
+    app.use(webpackHotMiddleware(compiler));
 }
 
 app.get("/", (req, res) => {
-  res.write(
-    webpackDevMiddleware.fileSystem.readFileSync(
-      path.join(__dirname, "/dist/", "index.html")
-    )
-  );
+    res.write(
+        webpackDevMiddleware.fileSystem.readFileSync(
+            path.join(__dirname, "/dist/", "index.html")
+        )
+    );
 });
 
 //creating io and stuff 
 app.get("/room", (req, res) => {
-  res.sendFile(path.resolve(__dirname, "../dist/index.html"))
+    res.sendFile(path.resolve(__dirname, "../dist/index.html"))
 });
 
 let interval;
 let rooms = {}
 
 io.on("connection", (socket) => {
-  const id = socket.id 
+    const id = socket.id
 
-  if (interval) {
-    clearInterval(interval);
-  }
-  interval = setInterval(() => getApiAndEmit(socket), 1000);
-
-  socket.on("disconnect", () => {
-    socket.emit('user-dc', socket.id)
-    clearInterval(interval);
-  });
-
-  socket.on('join room', roomID => {
-    console.log(roomID)
-    if (rooms[roomID]) {
-      rooms[roomID].push(socket.id)
-    } else {
-      rooms[roomID] = [socket.id]
+    if (interval) {
+        clearInterval(interval);
     }
+    interval = setInterval(() => getApiAndEmit(socket), 1000);
 
-    const otherUser = rooms[roomID].find(id => id !== socket.id);
+    socket.on("disconnect", () => {
+        socket.emit('user-dc', socket.id)
+        clearInterval(interval);
+    });
 
-    if (otherUser) {
-      socket.emit('other user', otherUser);
-      socket.to(otherUser).emit('user joined', socket.id)
-    }
+    socket.on('join room', roomID => {
+        console.log(roomID)
+        if (rooms[roomID]) {
+            rooms[roomID].push(socket.id)
+        } else {
+            rooms[roomID] = [socket.id]
+        }
 
-  })
+        const otherUser = rooms[roomID].find(id => id !== socket.id);
 
-  socket.emit('user-connected', socket.id)
+        if (otherUser) {
+            socket.emit('other user', otherUser);
+            socket.to(otherUser).emit('user joined', socket.id)
+        }
+
+    })
+
+    socket.emit('user-connected', socket.id)
 });
 
 const getApiAndEmit = socket => {
-  const response = new Date();
-  // Emitting a new message. Will be consumed by the client
-  socket.emit("FromAPI", response);
-  
+    const response = new Date();
+    // Emitting a new message. Will be consumed by the client
+    socket.emit("FromAPI", response);
+
 };
 const port = process.env.PORT || 8080;
 app.listen(port, () => console.log(`Express server listening on port ${port}`));
