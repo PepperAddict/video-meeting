@@ -4,7 +4,20 @@ import { io } from "socket.io-client";
 const ENDPOINT = "http://127.0.0.1:3000";
 const mediaDevices = navigator.mediaDevices as any
 import Peer from 'peerjs';
-const peer = new Peer()
+const usa = uuidv4()
+const peer = new Peer(undefined, {
+  config: {
+    iceServers: [
+      { urls: "stun:stun.services.mozilla.com" },
+      { urls: "stun:stun.l.google.com:19302" },
+      {
+        urls: "turn:numb.viagenie.ca",
+        credential: "qwertyuiop",
+        username: "ozqgvaadhmyrakdwod@awdrt.org",
+      },
+    ],
+  }
+})
 const socket = io(ENDPOINT);
 import '../../styles/room.styl'
 
@@ -17,25 +30,25 @@ export default function Room(props) {
   const listOfPeers = {}
 
 
+
   useEffect(() => {
+
+    peer.on('open', id => {
+      console.log(id)
+      socket.emit('join-room', 'room1', id)
+    })
 
 
     socket.on("FromAPI", data => {
       setResponse(data);
     });
 
-    peer.on('open', id => {
-      socket.emit('join room', uuidv4(), socket.id)
-    })
-
-    socket.on('user-dc', user => {
-      console.log('user ' + user)
-    })
 
     return () => socket.disconnect()
   }, [vidGrid]);
 
   const addStream = (video, stream) => {
+    console.log(video.className)
     video.srcObject = stream;
     video.onloadedmetadata = (ev) => {
       video.play()
@@ -44,21 +57,29 @@ export default function Room(props) {
   }
 
   const connectNewUser = (user, stream) => {
-    const call = peer.call(user, stream)
-    const video = document.createElement('video')
+    console.log(peer)
 
-    call.on('stream', uStream => {
-      addStream(video, uStream)
+    //making a call. Hello!
+    const call = peer.call(user, stream)
+
+    const videoTwo = document.createElement('video')
+    videoTwo.className = "vidi"
+
+    //Let's send in our stream
+
+    call.on('stream', userVideoStream => {
+
+      console.log('uStream')
+      addStream(videoTwo, userVideoStream)
     })
 
     call.on('close', () => {
-
-      video.remove()
+      console.log('closed')
+      videoTwo.remove()
     })
 
     listOfPeers[user] = call
 
-    console.log(listOfPeers)
   }
 
 
@@ -66,7 +87,9 @@ export default function Room(props) {
 
   useEffect(() => {
     const video = document.createElement('video')
+    video.className = "original"
     video.muted = true
+
     const constraintObj = {
       video: {
         width: { ideal: 4096 },
@@ -75,22 +98,36 @@ export default function Room(props) {
       audio: true
     };
     mediaDevices.getUserMedia(constraintObj).then(stream => {
+
       //add for ourselves
       addStream(video, stream)
 
+
+
       //send our stream
+
       peer.on('call', call => {
+
+        console.log('ring ring')
+
+        //send our stream
         call.answer(stream)
 
-        const video = document.createElement('video')
-        addStream(video, stream)
+
+
+
+
+        call.on('stream', userVideoStream => {
+          const videoTwo = document.createElement('video')
+          videoTwo.className = "hiyo"
+          console.log('uStream')
+          addStream(videoTwo, userVideoStream)
+        })
+
 
       })
 
-      //socket communication
-
-      socket.on('user-connected', (user) => {
-        console.log(user)
+      socket.on('user-connected', user => {
         connectNewUser(user, stream)
       })
 
@@ -108,8 +145,7 @@ export default function Room(props) {
         <div id="video-grid" ref={vidGrid}>
 
         </div>
-        <video autoPlay ref={userVideo} />
-        <video autoPlay ref={partnerVideo} />
+
       </header>
 
     </div>
