@@ -32,16 +32,16 @@ const compiler = webpack(config);
 app.use(webpackDevMiddleware(compiler, config.devServer));
 
 if (isDev) {
-  const webpackHotMiddleware = require("webpack-hot-middleware");
-  app.use(webpackHotMiddleware(compiler));
+    const webpackHotMiddleware = require("webpack-hot-middleware");
+    app.use(webpackHotMiddleware(compiler));
 }
 
 app.get("/", (req, res) => {
-  res.write(
-    webpackDevMiddleware.fileSystem.readFileSync(
-      path.join(__dirname, "/dist/", "index.html")
-    )
-  );
+    res.write(
+        webpackDevMiddleware.fileSystem.readFileSync(
+            path.join(__dirname, "/dist/", "index.html")
+        )
+    );
 });
 
 //creating io and stuff
