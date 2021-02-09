@@ -64,7 +64,7 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
 
-    socket.emit("user-dc", user);
+    socket.to(room).broadcast.emit('user-disconnected', user)
 
     if (rooms.hasOwnProperty(room)) {
       rooms[room].has(user) && rooms[room].delete(user)

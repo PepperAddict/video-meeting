@@ -25,11 +25,8 @@ import '../../styles/room.styl'
 export default function Room(props) {
   const [response, setResponse] = useState("");
 
-  const userVideo = useRef();
-  const partnerVideo = useRef();
   const vidGrid = useRef();
-  const listOfPeers = {}
-
+  const allPeers = {}
 
 
   useEffect(() => {
@@ -43,6 +40,12 @@ export default function Room(props) {
     socket.on("FromAPI", data => {
       setResponse(data);
     });
+
+    socket.on('user-disconnected', user => {
+      console.log(allPeers)
+      if (allPeers[user]) allPeers[user].close()
+
+    })
 
 
     return () => socket.disconnect()
@@ -58,14 +61,15 @@ export default function Room(props) {
   }
 
   const connectNewUser = (user, stream) => {
-    console.log(peer)
+    
 
     //making a call. Hello!
     const call = peer.call(user, stream)
+    //now that we have calls, let's store the information
+    allPeers[user] = call
+
 
     const videoTwo = document.createElement('video')
-    videoTwo.className = "vidi"
-
     //Let's send in our stream
 
     call.on('stream', userVideoStream => {
@@ -79,7 +83,7 @@ export default function Room(props) {
       videoTwo.remove()
     })
 
-    listOfPeers[user] = call
+
 
   }
 
@@ -114,14 +118,10 @@ export default function Room(props) {
         //send our stream
         call.answer(stream)
 
-
-
-
+        //we should receive their stream after answering call
 
         call.on('stream', userVideoStream => {
           const videoTwo = document.createElement('video')
-          videoTwo.className = "hiyo"
-          console.log('uStream')
           addStream(videoTwo, userVideoStream)
         })
 
