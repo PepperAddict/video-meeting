@@ -56,7 +56,8 @@ let rooms = {};
 io.on("connection", (socket) => {
   let user;
   let room;
-  socket.emit("room", rooms);
+
+
   if (interval) {
     clearInterval(interval);
   }
@@ -86,6 +87,7 @@ io.on("connection", (socket) => {
     console.log(rooms)
     socket.join(room)
     socket.to(room).broadcast.emit('user-connected', user)
+    socket.emit("users", rooms);
 
   });
 
