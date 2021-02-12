@@ -6,8 +6,8 @@ const router = express.Router();
 const path = require("path");
 const bodyParser = require("body-parser");
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+
+app.use(express.urlencoded({extended: true}))
 
 //manage socket io
 const server = require("http").createServer();
@@ -90,6 +90,26 @@ io.on("connection", (socket) => {
     socket.emit("users", rooms);
 
   });
+
+  socket.on('call-user', data => {
+    socket.to(data.to).emit('call-made', {
+      offer: data.offer,
+      socket: socket.id
+    })
+  })
+
+  socket.on('make-answer', data => {
+    socket.to(data.to).emit('answer-made', {
+      socket: socket.id, 
+      answer: data.answer
+    })
+  })
+
+  socket.on('send-chat-message', message => {
+    socket.broadcast.emit('chat-message', {
+      message: message, name: users[socket.id]
+    })
+  })
 
   
 });

@@ -4,7 +4,7 @@ import { io } from "socket.io-client";
 const ENDPOINT = "http://127.0.0.1:3000";
 const mediaDevices = navigator.mediaDevices as any
 import Peer from 'peerjs';
-const usa = uuidv4()
+const random = uuidv4()
 const peer = new Peer(undefined, {
     config: {
         iceServers: [
@@ -27,6 +27,7 @@ export default function Videos(props) {
     const room = "room1"
 
     const vidGrid = useRef();
+    const chatGrid = useRef();
     const allPeers = {}
 
 
@@ -46,8 +47,9 @@ export default function Videos(props) {
             if (allPeers[user]) allPeers[user].close();
         })
 
-        socket.on('users', data => {
-            console.log(data)
+
+        peer.on('connection', (conn) => {
+            console.log(conn)
         })
 
         return () => {
@@ -84,9 +86,9 @@ export default function Videos(props) {
         video.id = user
 
         //now they will send their video so we can add
-        call.on('stream', userVideoStream => {
-            addStream(video, userVideoStream)
-        })
+        // call.on('stream', userVideoStream => {
+        //     addStream(video, userVideoStream)
+        // })
 
         call.on('close', () => {
             console.log('closed')
@@ -95,7 +97,17 @@ export default function Videos(props) {
 
         //let's do clean up here to avoid glitches 
 
+    }
+    const initiateChat = (user) => {
+        const conn = peer.connect(user)
 
+        conn.on('open', () => {
+            conn.on('data', (data) => {
+                console.log(data)
+            })
+        })
+
+        conn.send('hello')
     }
 
 
@@ -142,6 +154,7 @@ export default function Videos(props) {
 
             socket.on('user-connected', user => {
                 connectNewUser(user, stream)
+                initiateChat(user)
             })
 
         })
@@ -156,6 +169,10 @@ export default function Videos(props) {
                 {response}
 
                 <div id="video-grid" ref={vidGrid}>
+
+                </div>
+
+                <div id="chat-grid" ref={chatGrid} >
 
                 </div>
 
