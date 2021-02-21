@@ -1,10 +1,10 @@
-
+require('dotenv').config()
 
 const express = require("express");
 const app = express();
 const router = express.Router();
 const path = require("path");
-require('dotenv').config
+
 //graphql portion
 const https = require("https");
 const { graphqlHTTP } = require("express-graphql");
@@ -13,6 +13,7 @@ const { execute, subscribe, buildSchema } = require("graphql");
 const { useServer } = require("graphql-ws/lib/use/ws");
 const { makeExecutableSchema } = require('graphql-tools');
 const Redis = require('ioredis')
+console.log(process.env.REDIS_HOST)
 const redis = new Redis({
   host: process.env.REDIS_HOST, 
   port: 6379,
@@ -25,8 +26,9 @@ publisher: redis,
 subscriber: redis
 });
 const messages = [{id: 1, user:"jake", content: "candies"}];
-const subscribers = [];
-const onMessagesUpdates = (fn) => subscribers.push(fn)
+const subscribers = []
+const onMessagesUpdates = (sub) => subscribers.push(sub)
+
 
 const types = `
   type Message {
@@ -34,44 +36,70 @@ const types = `
     user: String!
     content: String!
   }
+  type Result {
+    id: ID!
+    content: String!
+  }
+
 
   type Query {
-    message: [Message!]
+    get(key: String!): String
+    messages: [Message!]
   }
+
 
   type Mutation {
     postMessage(user: String!, content: String!): String!
+    set(key: String!, value: String!): Boolean!
   }
 
   type Subscription {
     message: [Message!]
+    somethingchanged: Result
+    
   }
 `;
 
 const roots = {
   Query: {
-    message: () => messages,
+    get: (parent, {key}, {redis}) => {
+      try {
+        return redis.get(key)
+      } catch (error) {
+        return null
+      }
+    },
+    messages: () => messages
   },
 
   Mutation: {
     postMessage: (parent, { user, content }) => {
+      let date = new Date()
       const id = messages.length;
       messages.push({
         id,
         user,
         content,
       });
+      redis.set(user, content)
       subscribers.forEach(fn => fn())
       return id;
     },
+    set: async (parent, {key, value}, {redis}) => {
+      try {
+        await redis.set(key, value)
+        return true
+      } catch (error) {
+        console.log(error)
+        return false
+      }
+    }
   },
   Subscription: {
     message: {
-      subscribe: () => {
-        const channel = Math.random().toString(36).slice(2, 15);
-        onMessagesUpdates(() => pubsub.publish(channel, {message: messages}))
-        setTimeout(() => pubsub.publish(channel, {messages}), 0)
-        return pubsub.asyncIterator(channel)
+      subscribe: (parent, args, {pubsub}) => {
+        const SOMETHING_CHANGED_TOPIC = 'something_changed'
+        return pubsub.asyncIterator(SOMETHING_CHANGED_TOPIC)
       }
     }
   }
@@ -89,6 +117,7 @@ app.use(
   graphqlHTTP({
     schema,
     graphiql: true,
+    context: {redis, pubsub}
   })
 );
 
