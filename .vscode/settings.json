@@ -1,0 +1,8 @@
+{
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".vscode{,/**}"
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/8f6258eb-4e4a-4d5c-bfd9-e85675368295/resourceGroups/ODL-accesshack-300596/providers/Microsoft.Web/sites/VCMeet",
+    "appService.deploySubpath": "."
+}

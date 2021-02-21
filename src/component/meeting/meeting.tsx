@@ -24,6 +24,7 @@ import '../../styles/room.styl'
 
 export default function Videos(props) {
     const [response, setResponse] = useState("");
+
     const room = "room1"
 
     const vidGrid = useRef();
@@ -31,9 +32,11 @@ export default function Videos(props) {
     const allPeers = {}
 
 
+    
     useEffect(() => {
 
         peer.on('open', id => {
+ 
             socket.emit('join-room', room, id)
         })
 
@@ -52,6 +55,15 @@ export default function Videos(props) {
             console.log(conn)
         })
 
+        //for text chat 
+
+        socket.on('chat-message', (data) => {
+            console.log(data)
+            const p = document.createElement('p')
+            p.innerHTML = data.message.message
+            chatGrid.current.append(p)
+        })
+
         return () => {
             //when leaving, disconnect from socket and remove child elements of vid Grid. 
             if (vidGrid.current) {
@@ -60,10 +72,9 @@ export default function Videos(props) {
                 }
             }
 
-
             socket.disconnect()
         }
-    }, [vidGrid]);
+    }, [vidGrid, chatGrid]);
 
     const addStream = (video, stream) => {
 
@@ -161,6 +172,18 @@ export default function Videos(props) {
 
     }, [vidGrid])
 
+    //Sending chat 
+    const [chat, setChat] = useState('')
+    const chatInput = useRef('')
+    const sendMessage = (e) => {
+
+        e.preventDefault();
+
+        socket.emit('send-chat-message', chat)
+        setChat('')
+        chatInput.current.value = ""
+    }
+
 
     return (
         <div className="welcome-container">
@@ -175,6 +198,11 @@ export default function Videos(props) {
                 <div id="chat-grid" ref={chatGrid} >
 
                 </div>
+                {/* <form onSubmit={(e) => sendMessage(e)}>
+                    <input placeholder="send a message" onChange={(e) => setChat(e.target.value)} ref={chatInput}/>
+                    <button type="submit">Submit</button>
+                </form> */}
+                
 
             </header>
 
