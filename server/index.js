@@ -4,31 +4,30 @@ const express = require("express");
 const app = express();
 const router = express.Router();
 const path = require("path");
-
+let room = 'test';
 //graphql portion
-const https = require("https");
 const { graphqlHTTP } = require("express-graphql");
-const ws = require("ws");
-const { execute, subscribe, buildSchema } = require("graphql");
-const { useServer } = require("graphql-ws/lib/use/ws");
+const { execute, subscribe } = require("graphql");
 const { makeExecutableSchema } = require('graphql-tools');
 const Redis = require('ioredis')
-console.log(process.env.REDIS_HOST)
-const redis = new Redis({
+const {altairExpress} = require('altair-express-middleware')
+const {SubscriptionServer} = require('subscriptions-transport-ws')
+
+const options = {
   host: process.env.REDIS_HOST, 
   port: 6379,
   password: process.env.REDIS_PASS
-})
+}
 
 const { RedisPubSub } = require('graphql-redis-subscriptions');
 const pubsub = new RedisPubSub({
-publisher: redis,
-subscriber: redis
+publisher: new Redis(options),
+subscriber: new Redis(options)
 });
+const redis = new Redis(options)
 const messages = [{id: 1, user:"jake", content: "candies"}];
 const subscribers = []
 const onMessagesUpdates = (sub) => subscribers.push(sub)
-
 
 const types = `
   type Message {
@@ -69,45 +68,55 @@ const roots = {
         return null
       }
     },
-    messages: () => messages
+    messages: async () => {
+      await redis.lrange(room, 0, 10).then((res) => {
+        console.log(res)
+        return [res]
+      }).catch((err) => console.log(err))
+
+    }
   },
 
   Mutation: {
     postMessage: (parent, { user, content }) => {
-      let date = new Date()
       const id = messages.length;
       messages.push({
         id,
         user,
         content,
       });
-      redis.set(user, content)
+      const newdata = {
+        id,
+        user, 
+        content
+      }
+      redis.lpush(room, content).then((res) => {
+        console.log(res)
+      }).catch((err) => console.log('no worky'))
       subscribers.forEach(fn => fn())
       return id;
     },
-    set: async (parent, {key, value}, {redis}) => {
-      try {
-        await redis.set(key, value)
-        return true
-      } catch (error) {
-        console.log(error)
-        return false
-      }
-    }
   },
   Subscription: {
     message: {
-      subscribe: (parent, args, {pubsub}) => {
+      subscribe: () => {
         const SOMETHING_CHANGED_TOPIC = 'something_changed'
-        return pubsub.asyncIterator(SOMETHING_CHANGED_TOPIC)
+        onMessagesUpdates(() => pubsub.publish(SOMETHING_CHANGED_TOPIC, {message: redis.hgetall(room)}))
+        setTimeout(() => pubsub.publish(SOMETHING_CHANGED_TOPIC, {message: redis.hgetall(room)}))
+
+        try {
+          return pubsub.asyncIterator(SOMETHING_CHANGED_TOPIC)
+        } catch(err) {
+          console.log(err)
+          return err
+        }
+        
       }
     }
   }
 };
-const subserver = https.createServer(function weServeSocketsOnly(_, res) {
-  res.writeHead(404);
-  res.end();
-});
+
+
 const schema = makeExecutableSchema({
   typeDefs: types,
   resolvers: roots,
@@ -117,23 +126,18 @@ app.use(
   graphqlHTTP({
     schema,
     graphiql: true,
+    subscriptionsEndpoint: `ws://localhost:3000/subscriptions`,
     context: {redis, pubsub}
   })
 );
 
-useServer(
-  {
-    types, 
-    roots, 
-    execute, 
-    subscribe,
-  },
-  new ws.Server({
-    server: subserver, 
-    path: '/graphql'
-  })
-)
-subserver.listen(443)
+app.use('/altair', altairExpress({
+  endpointURL: '/graphql',
+  subscriptionsEndpoint: `ws://localhost:3000/subscriptions`,
+  initialQuery: `query {message {id}}`,
+  context: {redis, pubsub}
+}))
+
 
 //end graphql portion
 
@@ -148,7 +152,18 @@ const io = require("socket.io")(server, {
     credentials: true,
   },
 });
-server.listen(3000);
+
+server.listen(3000, () => {
+  new SubscriptionServer( {
+    execute, 
+    subscribe,
+    schema
+  }, {
+    server: server, 
+    path: '/subscriptions',
+    context: {redis, pubsub}
+  })
+});
 
 //middlewware
 const isDev = process.env.NODE_ENV == "development" ? true : false;
@@ -184,7 +199,6 @@ let rooms = {};
 
 io.on("connection", (socket) => {
   let user;
-  let room;
 
   if (interval) {
     clearInterval(interval);

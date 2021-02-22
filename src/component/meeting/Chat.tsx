@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useSubscription } from '@apollo/client'
 
-import { GET_MESSAGES, SEND_MESSAGE } from '../../helper/gql.js'
+import { GET_MESSAGES, SEND_MESSAGE, SUB_MESSAGE } from '../../helper/gql.js'
 
 const Messages = ({ user }) => {
-    const { data } = useQuery(GET_MESSAGES, {
-
-    })
+    const { data } = useSubscription(SUB_MESSAGE)
 
     if (data) {
         console.log(data)

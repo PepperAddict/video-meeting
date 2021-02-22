@@ -2,8 +2,16 @@ import { hot } from 'react-hot-loader/root';
 import React from 'react';
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 import {ApolloClient, InMemoryCache, ApolloProvider} from '@apollo/client';
+import {WebSocketLink} from '@apollo/client/link/ws'
 
+const link = new WebSocketLink({
+  uri: `ws://localhost:3000/subscriptions`,
+  options: {
+    reconnect: true
+  }
+})
 const client = new ApolloClient({
+    link,
     uri: 'http://localhost:8080/graphql',
     cache: new InMemoryCache()
 })
@@ -15,7 +23,6 @@ import Room from './meeting/Room'
 const App = () => {
   return (
     <ApolloProvider client={client}>
-
 
     <Router> 
 

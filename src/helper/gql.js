@@ -15,3 +15,13 @@ mutation postMessage($user: String!, $content: String!) {
     postMessage (user: $user, content: $content)
   }
 `
+
+export const SUB_MESSAGE = gql`
+subscription {
+  message {
+    id
+    content
+    user
+  }
+}
+`
