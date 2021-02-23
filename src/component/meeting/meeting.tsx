@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { io } from "socket.io-client";
-const ENDPOINT = "http://127.0.0.1:3000";
+const ENDPOINT = "http://127.0.0.1:3001";
 const mediaDevices = navigator.mediaDevices as any
 import Peer from 'peerjs';
 const random = uuidv4()
@@ -37,7 +37,7 @@ export default function Videos(props) {
 
         peer.on('open', id => {
  
-            socket.emit('join-room', room, id)
+            socket.emit('join-room', room, props.user)
         })
 
 

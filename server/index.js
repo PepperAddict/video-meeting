@@ -1,33 +1,45 @@
-require('dotenv').config()
-
+require("dotenv").config();
 const express = require("express");
 const app = express();
 const router = express.Router();
 const path = require("path");
-let room = 'test';
+let room = "test";
 //graphql portion
 const { graphqlHTTP } = require("express-graphql");
 const { execute, subscribe } = require("graphql");
-const { makeExecutableSchema } = require('graphql-tools');
-const Redis = require('ioredis')
-const {altairExpress} = require('altair-express-middleware')
-const {SubscriptionServer} = require('subscriptions-transport-ws')
+const { makeExecutableSchema } = require("graphql-tools");
+const Redis = require("ioredis");
+const { altairExpress } = require("altair-express-middleware");
+const { SubscriptionServer } = require("subscriptions-transport-ws");
 
 const options = {
-  host: process.env.REDIS_HOST, 
+  host: process.env.REDIS_HOST,
   port: 6379,
-  password: process.env.REDIS_PASS
-}
+  password: process.env.REDIS_PASS,
+};
 
-const { RedisPubSub } = require('graphql-redis-subscriptions');
+const { RedisPubSub } = require("graphql-redis-subscriptions");
 const pubsub = new RedisPubSub({
-publisher: new Redis(options),
-subscriber: new Redis(options)
+  publisher: new Redis(options),
+  subscriber: new Redis(options),
 });
-const redis = new Redis(options)
-const messages = [{id: 1, user:"jake", content: "candies"}];
-const subscribers = []
-const onMessagesUpdates = (sub) => subscribers.push(sub)
+const redis = new Redis(options);
+const subscribers = [];
+const onMessagesUpdates = (sub) => subscribers.push(sub);
+
+const getArrayMSG = async (redis, limit = 0) => {
+  let newData = [];
+  await redis
+    .lrange(room, 0, -1)
+    .then((res) => {
+      for (let eachData of res) {
+        newData.push(JSON.parse(eachData));
+      }
+    })
+    .catch((err) => console.log(err));
+
+  return newData;
+};
 
 const types = `
   type Message {
@@ -61,61 +73,74 @@ const types = `
 
 const roots = {
   Query: {
-    get: (parent, {key}, {redis}) => {
+    get: (parent, { key }, { redis }) => {
       try {
-        return redis.get(key)
+        return redis.get(key);
       } catch (error) {
-        return null
+        return null;
       }
     },
     messages: async () => {
-      await redis.lrange(room, 0, 10).then((res) => {
-        console.log(res)
-        return [res]
-      }).catch((err) => console.log(err))
-
-    }
+      return getArrayMSG(redis, -1);
+    },
   },
 
   Mutation: {
-    postMessage: (parent, { user, content }) => {
-      const id = messages.length;
-      messages.push({
+    postMessage: async (parent, { user, content }) => {
+      const id = (await redis.llen(room)) + 1;
+      const newdata = {
         id,
         user,
         content,
-      });
-      const newdata = {
-        id,
-        user, 
-        content
-      }
-      redis.lpush(room, content).then((res) => {
-        console.log(res)
-      }).catch((err) => console.log('no worky'))
-      subscribers.forEach(fn => fn())
+      };
+      await redis
+        .rpush(room, JSON.stringify(newdata))
+        .catch((err) => console.log("no worky"));
+      subscribers.forEach((fn) => fn());
       return id;
     },
   },
   Subscription: {
     message: {
       subscribe: () => {
-        const SOMETHING_CHANGED_TOPIC = 'something_changed'
-        onMessagesUpdates(() => pubsub.publish(SOMETHING_CHANGED_TOPIC, {message: redis.hgetall(room)}))
-        setTimeout(() => pubsub.publish(SOMETHING_CHANGED_TOPIC, {message: redis.hgetall(room)}))
+        const SOMETHING_CHANGED_TOPIC = Math.random().toString(36).slice(2, 15);
 
+        // let messages = await getallmsg(redis)
+
+        onMessagesUpdates(async () =>
+          pubsub.publish(SOMETHING_CHANGED_TOPIC, {
+            message: await redis.lrange(room, 0, -1).then((res) => {
+              let newData = [];
+              for (let eachData of res) {
+                newData.push(JSON.parse(eachData));
+              }
+              return newData;
+            }),
+          })
+        );
+        setTimeout(
+          async () =>
+            pubsub.publish(SOMETHING_CHANGED_TOPIC, {
+              message: await redis.lrange(room, 0, -1).then((res) => {
+                let newData = [];
+                for (let eachData of res) {
+                  newData.push(JSON.parse(eachData));
+                }
+                return newData;
+              }),
+            }),
+          0
+        );
         try {
-          return pubsub.asyncIterator(SOMETHING_CHANGED_TOPIC)
-        } catch(err) {
-          console.log(err)
-          return err
+          return pubsub.asyncIterator(SOMETHING_CHANGED_TOPIC);
+        } catch (err) {
+          console.log(err);
+          return err;
         }
-        
-      }
-    }
-  }
+      },
+    },
+  },
 };
-
 
 const schema = makeExecutableSchema({
   typeDefs: types,
@@ -127,43 +152,51 @@ app.use(
     schema,
     graphiql: true,
     subscriptionsEndpoint: `ws://localhost:3000/subscriptions`,
-    context: {redis, pubsub}
+    context: { redis, pubsub },
   })
 );
 
-app.use('/altair', altairExpress({
-  endpointURL: '/graphql',
-  subscriptionsEndpoint: `ws://localhost:3000/subscriptions`,
-  initialQuery: `query {message {id}}`,
-  context: {redis, pubsub}
-}))
-
+app.use(
+  "/altair",
+  altairExpress({
+    endpointURL: "/graphql",
+    subscriptionsEndpoint: `ws://localhost:3000/subscriptions`,
+    initialQuery: `query {message {id}}`,
+    context: { redis, pubsub },
+  })
+);
+const subscriptionServer = require("http").createServer();
+subscriptionServer.listen(3000, () => {
+  new SubscriptionServer(
+    {
+      execute,
+      subscribe,
+      schema,
+    },
+    {
+      server: subscriptionServer,
+      path: "/subscriptions",
+      context: { redis, pubsub },
+    }
+  );
+});
 
 //end graphql portion
 
 app.use(express.urlencoded({ extended: true }));
 
 //manage socket io
+
 const server = require("http").createServer();
 const io = require("socket.io")(server, {
   cors: {
-    origin: ["http://localhost:8080", "https://d2e5abbd860c.ngrok.io"],
+    origin: ["http://localhost:8080"],
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
 
-server.listen(3000, () => {
-  new SubscriptionServer( {
-    execute, 
-    subscribe,
-    schema
-  }, {
-    server: server, 
-    path: '/subscriptions',
-    context: {redis, pubsub}
-  })
-});
+server.listen(3001);
 
 //middlewware
 const isDev = process.env.NODE_ENV == "development" ? true : false;
@@ -208,6 +241,14 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     socket.to(room).broadcast.emit("user-disconnected", user);
 
+    let discData = {
+      id: Math.floor((Math.random() * 10), + 1),
+      user: "System",
+      content: `${user} has disconnected`
+    }
+
+    redis.rpush(room, JSON.stringify(discData))
+    subscribers.forEach((fn) => fn());
     if (rooms.hasOwnProperty(room)) {
       rooms[room].has(user) && rooms[room].delete(user);
     }
@@ -227,6 +268,16 @@ io.on("connection", (socket) => {
     socket.join(room);
     socket.to(room).broadcast.emit("user-connected", user);
     socket.emit("users", rooms);
+
+    let discData = {
+      id: Math.floor((Math.random() * 10), + 1),
+      user: "System",
+      content: `${user} has connected`
+    }
+
+    redis.rpush(room, JSON.stringify(discData))
+    subscribers.forEach((fn) => fn());
+
   });
 
   socket.on("call-user", (data) => {
