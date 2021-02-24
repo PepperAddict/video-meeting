@@ -11,7 +11,7 @@
         "esModuleInterop": true
     },
     "files": [
-        "./src/component/React.tsx"
+        "./src/component/App.tsx"
     ],
     "include": ["./src/**/*"]
 }

@@ -1,49 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { io } from "socket.io-client";
 const ENDPOINT = "http://127.0.0.1:3001";
-const mediaDevices = navigator.mediaDevices as any
+const mediaDevices = navigator.mediaDevices 
 import Peer from 'peerjs';
-const random = uuidv4()
-const peer = new Peer(undefined, {
-    config: {
-        iceServers: [
-            { urls: "stun:stun.services.mozilla.com" },
-            { urls: "stun:stun.l.google.com:19302" },
-            {
-                urls: "turn:numb.viagenie.ca",
-                credential: "qwertyuiop",
-                username: "ozqgvaadhmyrakdwod@awdrt.org",
-            },
-        ],
-    }
-})
-const socket = io(ENDPOINT);
 import '../../styles/room.styl'
+import {iceServers} from '../../helper/configs.js'
+import { useLocation } from 'react-router-dom';
 
+const peer = new Peer(undefined, iceServers)
+const socket = io(ENDPOINT);
+
+
+//this is for speech 
+//const sdk = require('microsoft-cognitiveservices-speech-sdk');
+//const speechConfig = sdk.SpeechConfig.fromSubscription(process.env.SPEECH_KEY, "eastus")
 
 export default function Videos(props) {
-    const [response, setResponse] = useState("");
 
+    
+const location = useLocation();
     const room = "room1"
-
     const vidGrid = useRef();
     const chatGrid = useRef();
     const allPeers = {}
-
-
     
     useEffect(() => {
-
+        
+        let roomid = window.location.pathname.split('/') as any
+        roomid = roomid[roomid.length -1] as string
+        console.log(roomid)
         peer.on('open', id => {
- 
             socket.emit('join-room', room, props.user)
         })
-
-
-        socket.on("FromAPI", data => {
-            setResponse(data);
-        });
 
         socket.on('user-disconnected', user => {
             //when a user disconnects, this will activate and then the call.on('close') will work
@@ -55,14 +43,6 @@ export default function Videos(props) {
             console.log(conn)
         })
 
-        //for text chat 
-
-        socket.on('chat-message', (data) => {
-            console.log(data)
-            const p = document.createElement('p')
-            p.innerHTML = data.message.message
-            chatGrid.current.append(p)
-        })
 
         return () => {
             //when leaving, disconnect from socket and remove child elements of vid Grid. 
@@ -109,24 +89,10 @@ export default function Videos(props) {
         //let's do clean up here to avoid glitches 
 
     }
-    const initiateChat = (user) => {
-        const conn = peer.connect(user)
-
-        conn.on('open', () => {
-            conn.on('data', (data) => {
-                console.log(data)
-            })
-        })
-
-        conn.send('hello')
-    }
-
-
 
 
     useEffect(() => {
         const video = document.createElement('video')
-        video.id = "original"
         video.muted = true
 
         const constraintObj = {
@@ -137,6 +103,17 @@ export default function Videos(props) {
             audio: true
         };
         mediaDevices.getUserMedia(constraintObj).then(stream => {
+
+            //this is for speech recognition, but currently there is 
+            //a bug that results in code 10006 
+            //discussion: https://github.com/microsoft/cognitive-services-speech-sdk-js/issues/331
+
+            // let audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput()
+            // let recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig)
+            // recognizer.recognizeOnceAsync(result => {
+            //     console.log(result)
+            //     console.log('recognized ' + result.text)
+            // })
 
             //add for ourselves
             addStream(video, stream)
@@ -152,7 +129,6 @@ export default function Videos(props) {
                 const videoTwo = document.createElement('video')
                 videoTwo.id = call.peer
 
-
                 call.on('stream', userVideoStream => {
                     addStream(videoTwo, userVideoStream)
                 })
@@ -165,45 +141,17 @@ export default function Videos(props) {
 
             socket.on('user-connected', user => {
                 connectNewUser(user, stream)
-                initiateChat(user)
             })
-
         })
 
     }, [vidGrid])
-
-    //Sending chat 
-    const [chat, setChat] = useState('')
-    const chatInput = useRef('')
-    const sendMessage = (e) => {
-
-        e.preventDefault();
-
-        socket.emit('send-chat-message', chat)
-        setChat('')
-        chatInput.current.value = ""
-    }
 
 
     return (
         <div className="welcome-container">
 
             <header className="home-nav">
-                {response}
-
-                <div id="video-grid" ref={vidGrid}>
-
-                </div>
-
-                <div id="chat-grid" ref={chatGrid} >
-
-                </div>
-                {/* <form onSubmit={(e) => sendMessage(e)}>
-                    <input placeholder="send a message" onChange={(e) => setChat(e.target.value)} ref={chatInput}/>
-                    <button type="submit">Submit</button>
-                </form> */}
-                
-
+                <div id="video-grid" ref={vidGrid}></div>
             </header>
 
         </div>

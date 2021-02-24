@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import { useMutation, useSubscription } from '@apollo/client'
-
+import { useSelector } from 'react-redux';
 import { SEND_MESSAGE, SUB_MESSAGE } from '../../helper/gql.js'
 
-const Messages = ({ user }) => {
+const Messages = () => {
     const { data } = useSubscription(SUB_MESSAGE)
 
     return (
@@ -19,10 +19,12 @@ const Messages = ({ user }) => {
 
 }
 
-const Chat = ({ user }) => {
+const Chat = () => {
     const [text, setText] = useState('')
     const [postMessage] = useMutation(SEND_MESSAGE)
     const chatText = useRef()
+    const user = useSelector(state => state.user.value)
+    
 
     const sendMessage = (e) => {
         e.preventDefault()

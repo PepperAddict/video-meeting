@@ -3,6 +3,7 @@ const webpack = require("webpack");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCSSExtractPlugin = require("mini-css-extract-plugin");
+const Dotenv = require('dotenv-webpack')
 
 const isDev = true;
 module.exports = {
@@ -44,7 +45,7 @@ module.exports = {
       index: "/",
     },
   },
-  devtool: "inline-source-map",
+  devtool: "source-map",
   module: {
     rules: [
       {
@@ -103,6 +104,9 @@ module.exports = {
     ],
   },
   plugins: [
+    new Dotenv({
+      path: path.resolve(__dirname, '../.env')
+    }),
     new MiniCSSExtractPlugin({
       filename: "bundled-style.css",
       chunkFilename: "[id].css",

@@ -1,8 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit'
-import {theUser} from './states'
+import {theRoom, theUser} from './states'
 
 export default configureStore({
     reducer: {
-        user: theUser.reducer
+        user: theUser.reducer,
+        room: theRoom.reducer
     }
 })

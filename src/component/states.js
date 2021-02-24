@@ -15,4 +15,20 @@ export const theUser = createSlice({
     }
 })
 
+export const theRoom = createSlice({
+    name: "room",
+    initialState: {
+        value: null
+    },
+    reducers: {
+        setRoom: (state, data) => {
+            return {
+                ...state, 
+                value: data.payload
+            }
+        }
+    }
+})
+
 export const {setName} = theUser.actions 
+export const {setRoom} = theRoom.actions
