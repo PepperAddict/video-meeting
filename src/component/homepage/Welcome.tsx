@@ -1,9 +1,10 @@
-import React from 'react';
+import React , {useEffect} from 'react';
 import QuickEntry from './quickEntry'
 import SigninEntry from './SigninEntry'
 
 
 export default function Welcome() {
+
 
   return (
     <div className="welcome-container">

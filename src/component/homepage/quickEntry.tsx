@@ -19,12 +19,12 @@ export default function QuickEntry(props) {
         e.preventDefault()
         await dispatch(setName(newName.current.value))
 
-        let room = {
+        let roomInfo = {
             id: uuidv4(),
             name: newRoom.current.value
         }
 
-        await dispatch(setRoom(room))
+        await dispatch(setRoom(roomInfo))
 
         newName.current.value = ""
         newRoom.current.value = ""
@@ -37,19 +37,13 @@ export default function QuickEntry(props) {
     }
     return (
         <div className="left-container">
-            <h2>
-                Quickly Join
-            </h2>
-
+            <h2> Quickly Join </h2>
 
                 <form onSubmit={(e) => setItems(e)}>
-                    <input placeholder="enter name" ref={newName} />
+                    <input placeholder="enter a display name" ref={newName} />
                     <input placeholder="enter room ID" ref={newRoom} />
                     <button type="submit">Submit</button>
                 </form> 
-
-            
-
 
         </div>
     )

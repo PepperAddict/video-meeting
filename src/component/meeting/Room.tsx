@@ -1,19 +1,27 @@
-import React, { useState, useEffect, useRef, Fragment } from 'react';
+import React, { Fragment } from 'react';
 import '../../styles/room.styl';
 import Videos from './meeting'
 import Chat from './Chat'
-
+import { useSelector } from 'react-redux';
+import { Redirect } from 'react-router-dom'
 
 export default function Room(props) {
+  const user = useSelector(state => state.user.value)
+  const room = useSelector(state => state.room.value)
 
 
-  return (
-    <div className="welcome-container">
+  if (user && room) {
+    return (
+      <div className="welcome-container">
         <Fragment>
-          <Videos />
-          <Chat />
+          <Videos user={user} room={room} />
+          <Chat user={user} room={room} />
         </Fragment>
 
-    </div>
-  );
+      </div>
+    );
+  } else {
+    return <Redirect to="/" />
+  }
+
 }

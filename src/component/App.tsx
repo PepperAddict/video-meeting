@@ -54,7 +54,7 @@ const App = () => {
             <Welcome />
           </Route>
           
-          <Route path="/room/:room">
+          <Route path="/room/:room?">
             <Room />
           </Route>
 

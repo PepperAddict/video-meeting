@@ -1,36 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from "socket.io-client";
 const ENDPOINT = "http://127.0.0.1:3001";
-const mediaDevices = navigator.mediaDevices 
+const mediaDevices = navigator.mediaDevices
 import Peer from 'peerjs';
 import '../../styles/room.styl'
-import {iceServers} from '../../helper/configs.js'
-import { useLocation } from 'react-router-dom';
+import { iceServers } from '../../helper/configs.js'
 
 const peer = new Peer(undefined, iceServers)
 const socket = io(ENDPOINT);
 
 
 //this is for speech 
-//const sdk = require('microsoft-cognitiveservices-speech-sdk');
-//const speechConfig = sdk.SpeechConfig.fromSubscription(process.env.SPEECH_KEY, "eastus")
+// const sdk = require('microsoft-cognitiveservices-speech-sdk');
+// const speechConfig = sdk.SpeechConfig.fromSubscription(process.env.SPEECH_KEY, "eastus")
 
-export default function Videos(props) {
+export default function Videos({room, user}) {
 
-    
-const location = useLocation();
-    const room = "room1"
     const vidGrid = useRef();
     const chatGrid = useRef();
     const allPeers = {}
-    
+    console.log(allPeers)
+
     useEffect(() => {
-        
-        let roomid = window.location.pathname.split('/') as any
-        roomid = roomid[roomid.length -1] as string
-        console.log(roomid)
+
         peer.on('open', id => {
-            socket.emit('join-room', room, props.user)
+            socket.emit('join-room', room.id, user)
         })
 
         socket.on('user-disconnected', user => {
@@ -86,8 +80,6 @@ const location = useLocation();
             video.remove()
         })
 
-        //let's do clean up here to avoid glitches 
-
     }
 
 
@@ -108,12 +100,12 @@ const location = useLocation();
             //a bug that results in code 10006 
             //discussion: https://github.com/microsoft/cognitive-services-speech-sdk-js/issues/331
 
-            // let audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput()
-            // let recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig)
-            // recognizer.recognizeOnceAsync(result => {
-            //     console.log(result)
-            //     console.log('recognized ' + result.text)
-            // })
+            //  let audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput()
+            //  let recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig)
+            //  recognizer.recognizeOnceAsync(result => {
+            //      console.log(result)
+            //      console.log('recognized ' + result.text)
+            //  })
 
             //add for ourselves
             addStream(video, stream)
@@ -140,6 +132,7 @@ const location = useLocation();
             })
 
             socket.on('user-connected', user => {
+                console.log(user)
                 connectNewUser(user, stream)
             })
         })
@@ -151,6 +144,7 @@ const location = useLocation();
         <div className="welcome-container">
 
             <header className="home-nav">
+                <h1>{room.name}</h1>
                 <div id="video-grid" ref={vidGrid}></div>
             </header>
 
