@@ -37,6 +37,9 @@ export default function QuickEntry(props) {
     }
 
     useEffect( async () => {
+        if (error) {
+            console.log(error)
+        }
         if (data) {
             if (data.getRoom.id !== 'error-not-found') {
                 await dispatch(setRoom({id: data.getRoom.id, name: data.getRoom.name}))

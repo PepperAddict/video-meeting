@@ -33,14 +33,14 @@ const Chat = (props) => {
     const sendMessage = (e) => {
         e.preventDefault()
 
+        let variables = {
+            room: room.id, 
+            name: user, 
+            content: JSON.stringify({room: room.id, name: user, content: text})
+        }
+
         if (text.length > 0) {
-            postMessage({
-                variables: {
-                    room: room.id,
-                    user,
-                    content: text
-                }
-            })
+            postMessage({variables})
         }
 
         //once sent, then clear the state

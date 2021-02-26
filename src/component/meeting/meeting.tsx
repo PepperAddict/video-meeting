@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from "socket.io-client";
-const ENDPOINT = "http://127.0.0.1:8080";
+const ENDPOINT = "http://127.0.0.1:3001";
 const mediaDevices = navigator.mediaDevices
 import Peer from 'peerjs';
 import '../../styles/room.styl'

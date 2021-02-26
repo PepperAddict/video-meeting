@@ -1,7 +1,7 @@
 import React, {useRef, useState} from 'react'
 import {SET_ROOM } from '../../helper/gql.js'
 import { useMutation} from '@apollo/client'
-import { v4 as uuidv4 } from 'uuid';
+import {randomString} from '../../helper/configs'
 import { useDispatch } from 'react-redux';
 import { setRoom } from '../states.js';
 
@@ -13,11 +13,13 @@ export default function CreateRoom(props) {
 
     const createRoom = async (e) => {
         e.preventDefault()
+        let id = randomString(16, '#aA')
 
         let roomInfo = {
-            id: 'kitty',
+            id: id,
             name: roomName.current.value
         }
+        console.log(roomInfo)
 
         //set as a global state 
         await dispatch(setRoom(roomInfo))

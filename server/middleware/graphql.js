@@ -22,44 +22,50 @@ const roots = {
       }
     },
 
-    messages: async (parent, {room}) => {
-
+    messages: async (parent, { room }) => {
       let newData = [];
-      await redis.zrange(room, 0, -1).then((res) => {
-        console.log(res)
-        for (let eachData of res) {
-          newData.push(JSON.parse(eachData));
-        }
-      });
+      await redis
+        .zrange(room, 0, -1)
+        .then((res) => {
+          for (let eachData of res) {
+            newData.push(JSON.parse(eachData));
+          }
+        })
+        .catch((err) => console.log(err));
 
       return newData;
     },
     getRoom: async (parent, { id }) => {
       //if this room id exists then return true otherwise false
       //since we also stored a hash, lets get the name
-      let name = await redis.get(id);
-      try {
-        return await redis.sismember("room", id).then((res) => {
-        console.log(res)
-          if (res == 1) {
-            return { id, name };
-          } else {
-            return {id: 'error-not-found', name: 'none'}
-          }
-          
-        });
-      } catch (error) {
-        return error;
-      }
+        let result = {}
+        await redis.get(id)
+          .then((res) => {
+            console.log(res);
+            if (res) {
+              result = {
+                id,
+                name: res,
+              };
+            } else {
+              result = {
+                id: "error-not-found",
+                name: "none",
+              };
+            }
+          })
+          .catch((err) => console.log(err));
+          return result
+
     },
     rooms: async (parent, { id }) => {
       //this query is for showing all of the rooms available
       let rooms = [];
-      
+
       await redis.smembers("room").then(async (res) => {
         for (let room of res) {
           let name = await redis.get(room);
-          rooms.push({ id: room, name});
+          rooms.push({ id: room, name });
         }
       });
       return rooms;
@@ -67,23 +73,26 @@ const roots = {
   },
 
   Mutation: {
-    postMessage: async (parent, {room, user, content }) => {
+    postMessage: async (parent, { room, name, content }) => {
+      let items = JSON.stringify({
+        id: name,
+        name,
+        content,
+      });
 
-      const id = (await redis.zcard(room)) + 1;
-      console.log('hello', id)
-      //const stringified = `{"id": ${id}, "user": ${user}, "content": ${content}}`
-       const stringified = "helloo"
-      await redis.zadd(room, id, stringified).catch((err) => console.log("no worky"));
-      subscribers.forEach((fn) => fn());
-      return id;
+      return await redis.zadd(room, 1, items).then((res) => {
+        console.log(res)
+        subscribers.forEach((fn) => fn());
+        return content;
+      }).catch((err) => console.log(err));
+      
+      
     },
     setRoom: async (parent, { id, name }) => {
-
-      //while we add a room to the list, we should
-      //also keep track of its name
-      return await redis.sadd("room", id).then((res) => {
-        redis.set(id, name);
-        if (res === 1) {
+      //keep track of name
+      return await redis.set(id, name).then((res) => {
+        console.log(res);
+        if (res === "OK") {
           return true;
         } else {
           return false;
@@ -93,12 +102,12 @@ const roots = {
   },
   Subscription: {
     message: {
-      subscribe: (parent, {id}) => {
-
+      subscribe: (parent, { id }) => {
         const SOMETHING_CHANGED_TOPIC = Math.random().toString(36).slice(2, 15);
         onMessagesUpdates(async () =>
           pubsub.publish(SOMETHING_CHANGED_TOPIC, {
-            message: await redis.zrange(id, 0, -1)
+            message: await redis
+              .zrange(id, 0, -1)
               .then((res) => {
                 let newData = [];
                 for (let eachData of res) {
@@ -106,20 +115,26 @@ const roots = {
                 }
                 return newData;
               })
-              .catch((err) => console.log(err)),
+              .catch((err) => console.log("no work 1")),
           })
         );
-        setTimeout(async () => pubsub.publish(SOMETHING_CHANGED_TOPIC, {
-              message: await redis.zrange(id, 0, -1).then((res) => {
-                console.log(res)
+        setTimeout(
+          async () =>
+            pubsub.publish(SOMETHING_CHANGED_TOPIC, {
+              message: await redis
+                .zrange(id, 0, -1)
+                .then((res) => {
+                  console.log(res);
                   let newData = [];
                   for (let eachData of res) {
                     newData.push(JSON.parse(eachData));
                   }
                   return newData;
                 })
-                .catch((err) => console.log('no work')),
-            }),0);
+                .catch((err) => console.log("no work")),
+            }),
+          0
+        );
 
         try {
           return pubsub.asyncIterator(SOMETHING_CHANGED_TOPIC);
@@ -132,8 +147,8 @@ const roots = {
 };
 const types = `
   type Message {
-    id: ID!
-    user: String!
+    id: String!
+    name: String!
     content: String!
   }
   type Room {
@@ -152,7 +167,7 @@ const types = `
   }
 
   type Mutation {
-    postMessage(room: String!, user: String!, content: String!): String!
+    postMessage(room: String!, name: String!, content: String!): String!
     set(key: String!, value: String!): Boolean!
     setRoom(id: String!, name: String!): Boolean! 
   }
