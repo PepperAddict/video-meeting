@@ -1,28 +1,16 @@
 const express = require("express");
 const app = express();
-let room = "test";
+
 //graphql portion
 const { graphqlHTTP } = require("express-graphql");
 const { execute, subscribe } = require("graphql");
 const { makeExecutableSchema } = require("graphql-tools");
 const { SubscriptionServer } = require("subscriptions-transport-ws");
-const { RedisPubSub } = require("graphql-redis-subscriptions");
+const { redis, pubsub } = require("../helpers/redis");
 
 //for subscription to work
 const subscribers = [];
 const onMessagesUpdates = (sub) => subscribers.push(sub);
-
-const Redis = require("ioredis");
-const options = {
-  host: process.env.REDIS_HOST,
-  port: 6379,
-  password: process.env.REDIS_PASS,
-};
-const redis = new Redis(options);
-const pubsub = new RedisPubSub({
-  publisher: new Redis(options),
-  subscriber: new Redis(options),
-});
 
 const roots = {
   Query: {
@@ -34,67 +22,83 @@ const roots = {
       }
     },
 
-    messages: async () => {
+    messages: async (parent, {room}) => {
+
       let newData = [];
-      await lrange(room, 0, -1).then((res) => {
+      await redis.zrange(room, 0, -1).then((res) => {
+        console.log(res)
         for (let eachData of res) {
           newData.push(JSON.parse(eachData));
         }
       });
+
       return newData;
     },
     getRoom: async (parent, { id }) => {
-      return await sismember("room", id).then((res) => {
-        console.log(res);
-        if (res === 1) {
-          return true;
-        } else {
-          return true;
-        }
-      });
+      //if this room id exists then return true otherwise false
+      //since we also stored a hash, lets get the name
+      let name = await redis.get(id);
+      try {
+        return await redis.sismember("room", id).then((res) => {
+        console.log(res)
+          if (res == 1) {
+            return { id, name };
+          } else {
+            return {id: 'error-not-found', name: 'none'}
+          }
+          
+        });
+      } catch (error) {
+        return error;
+      }
     },
     rooms: async (parent, { id }) => {
-      return await redis.smembers("room").then((res) => {
-        return res;
+      //this query is for showing all of the rooms available
+      let rooms = [];
+      
+      await redis.smembers("room").then(async (res) => {
+        for (let room of res) {
+          let name = await redis.get(room);
+          rooms.push({ id: room, name});
+        }
       });
+      return rooms;
     },
   },
 
   Mutation: {
-    postMessage: async (parent, { user, content }, { redis }) => {
-      const id = (await redis.llen(room)) + 1;
-      const newdata = {
-        id,
-        user,
-        content,
-      };
-      await redis
-        .rpush(room, JSON.stringify(newdata))
-        .catch((err) => console.log("no worky"));
+    postMessage: async (parent, {room, user, content }) => {
+
+      const id = (await redis.zcard(room)) + 1;
+      console.log('hello', id)
+      //const stringified = `{"id": ${id}, "user": ${user}, "content": ${content}}`
+       const stringified = "helloo"
+      await redis.zadd(room, id, stringified).catch((err) => console.log("no worky"));
       subscribers.forEach((fn) => fn());
       return id;
     },
-    setRoom: async (parent, { id }) => {
+    setRoom: async (parent, { id, name }) => {
+
+      //while we add a room to the list, we should
+      //also keep track of its name
       return await redis.sadd("room", id).then((res) => {
-        console.log(res);
+        redis.set(id, name);
         if (res === 1) {
           return true;
         } else {
-          return true;
+          return false;
         }
       });
     },
   },
   Subscription: {
     message: {
-      subscribe: () => {
+      subscribe: (parent, {id}) => {
+
         const SOMETHING_CHANGED_TOPIC = Math.random().toString(36).slice(2, 15);
-
-
         onMessagesUpdates(async () =>
           pubsub.publish(SOMETHING_CHANGED_TOPIC, {
-            message: await redis
-              .lrange(room, 0, -1)
+            message: await redis.zrange(id, 0, -1)
               .then((res) => {
                 let newData = [];
                 for (let eachData of res) {
@@ -105,26 +109,21 @@ const roots = {
               .catch((err) => console.log(err)),
           })
         );
-        setTimeout(
-          async () =>
-            pubsub.publish(SOMETHING_CHANGED_TOPIC, {
-              message: await redis
-                .lrange(room, 0, -1)
-                .then((res) => {
+        setTimeout(async () => pubsub.publish(SOMETHING_CHANGED_TOPIC, {
+              message: await redis.zrange(id, 0, -1).then((res) => {
+                console.log(res)
                   let newData = [];
                   for (let eachData of res) {
                     newData.push(JSON.parse(eachData));
                   }
                   return newData;
                 })
-                .catch((err) => console.log("this broken")),
-            }),
-          0
-        );
+                .catch((err) => console.log('no work')),
+            }),0);
+
         try {
           return pubsub.asyncIterator(SOMETHING_CHANGED_TOPIC);
         } catch (err) {
-          console.log(err);
           return err;
         }
       },
@@ -139,6 +138,7 @@ const types = `
   }
   type Room {
       id: String!
+      name: String!
   }
   type Result {
     id: ID!
@@ -146,19 +146,19 @@ const types = `
   }
   type Query {
     get(key: String!): String
-    messages: [Message!]
-    getRoom (id: String!): Boolean!
+    messages(room: String!): [Message!]
+    getRoom (id: String!): Room!
     rooms: [Room]
   }
 
   type Mutation {
-    postMessage(user: String!, content: String!): String!
+    postMessage(room: String!, user: String!, content: String!): String!
     set(key: String!, value: String!): Boolean!
-    setRoom(id: String!): Boolean! 
+    setRoom(id: String!, name: String!): Boolean! 
   }
 
   type Subscription {
-    message: [Message!]
+    message(room: String!): [Message!]
     somethingchanged: Result
   }`;
 
@@ -192,6 +192,5 @@ app.all(
     context: { redis, pubsub },
   })
 );
-
 
 module.exports = app;

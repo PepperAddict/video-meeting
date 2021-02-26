@@ -1,5 +1,4 @@
 export const iceServers = {
-    config: {
     iceServers: [
         { urls: "stun:stun.services.mozilla.com" },
         { urls: "stun:stun.l.google.com:19302" },
@@ -9,5 +8,5 @@ export const iceServers = {
             username: "ozqgvaadhmyrakdwod@awdrt.org",
         },
     ],
-}
+
 }

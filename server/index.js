@@ -3,30 +3,26 @@ const express = require("express");
 const app = express();
 const path = require("path");
 
+//webpack server and hot reload stuff
+const webpack = require('./middleware/webpack')
+app.use(webpack)
+//manage socket io
+
+const server = require("http").createServer(app);
+const io = require("socket.io")(server, {
+  cors: {
+    origin: '*',
+  }
+});
+
+require('./middleware/sockets')(io)
+
 //graphql
 const graphql = require('./middleware/graphql')
 app.use(graphql)
 
 
 app.use(express.urlencoded({ extended: true }));
-
-//manage socket io
-
-const server = require("http").createServer();
-const io = require("socket.io")(server, {
-  cors: {
-    origin: ["http://localhost:8080"],
-    methods: ["GET", "POST"],
-    credentials: true,
-  },
-});
-
-require('./middleware/sockets')(io)
-server.listen(3001);
-
-//webpack server and hot reload stuff
-const webpack = require('./middleware/webpack')
-app.use(webpack)
 
 
 //manage our routes
@@ -43,7 +39,8 @@ app.get("/room/:page?", (req, res) => {
 
 //now for the listening part
 
-const port = process.env.PORT || 8080;
-app.listen(port, () => console.log(`Express server listening on port ${port}`));
-
-
+server.listen(process.env.PORT || 8080, function() {
+  var host = server.address().address
+  var port = server.address().port
+  console.log('App listening at http://%s:%s', host, port)
+});

@@ -1,12 +1,13 @@
 module.exports = function(io) {
+  const {redis} = require('../helpers/redis')
   //manage socket io
-  let room;
+  
   let interval;
   let rooms = {};
 
   io.on("connection", (socket) => {
     let user;
-
+    let room = 'kitty';
     if (interval) {
       clearInterval(interval);
     }
@@ -31,6 +32,7 @@ module.exports = function(io) {
     });
 
     socket.on("join-room", (roomID, userID) => {
+      console.log('ive joined ', roomID, userID)
       room = roomID;
       user = userID;
       if (rooms[roomID]) {
@@ -38,19 +40,11 @@ module.exports = function(io) {
       } else {
         rooms[roomID] = new Set();
       }
-      console.log(rooms);
+      console.log(rooms)
       socket.join(room);
       socket.to(room).broadcast.emit("user-connected", user);
       socket.emit("users", rooms);
 
-      let discData = {
-        id: Math.floor(Math.random() * 10, +1),
-        user: "System",
-        content: `${user} has connected`,
-      };
-
-      // redis.rpush(room, JSON.stringify(discData));
-      // subscribers.forEach((fn) => fn());
     });
 
     socket.on("call-user", (data) => {
@@ -80,4 +74,6 @@ module.exports = function(io) {
     // Emitting a new message. Will be consumed by the client
     socket.emit("FromAPI", response);
   };
+
+
 };

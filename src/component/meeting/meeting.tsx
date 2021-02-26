@@ -1,42 +1,55 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from "socket.io-client";
-const ENDPOINT = "http://127.0.0.1:3001";
+const ENDPOINT = "http://127.0.0.1:8080";
 const mediaDevices = navigator.mediaDevices
 import Peer from 'peerjs';
 import '../../styles/room.styl'
 import { iceServers } from '../../helper/configs.js'
 
-const peer = new Peer(undefined, iceServers)
+const peer = new Peer(undefined, {
+    config: iceServers
+
+})
 const socket = io(ENDPOINT);
+import { useSelector } from 'react-redux';
 
-
-//this is for speech 
+//this is for speech. They are fixing newer subscriptions. bring back once fixed. 
 // const sdk = require('microsoft-cognitiveservices-speech-sdk');
 // const speechConfig = sdk.SpeechConfig.fromSubscription(process.env.SPEECH_KEY, "eastus")
 
-export default function Videos({room, user}) {
+export default function Videos(props) {
 
+    const [response, setResponse] = useState("");
+    const user = useSelector(state => state.user.value)
+    const room = useSelector(state => state.room.value)
     const vidGrid = useRef();
-    const chatGrid = useRef();
-    const allPeers = {}
-    console.log(allPeers)
 
+    const allPeers = {}
+    
     useEffect(() => {
 
         peer.on('open', id => {
-            socket.emit('join-room', room.id, user)
+            socket.emit('join-room', room , user)
+        })
+
+        socket.on("FromAPI", data => {
+            setResponse(data)
         })
 
         socket.on('user-disconnected', user => {
+            
             //when a user disconnects, this will activate and then the call.on('close') will work
             if (allPeers[user]) allPeers[user].close();
         })
 
-
         peer.on('connection', (conn) => {
-            console.log(conn)
-        })
 
+            conn.on('open', function() {
+                conn.on('data', function(data) {
+                    console.log(data)
+                })
+            })
+        })
 
         return () => {
             //when leaving, disconnect from socket and remove child elements of vid Grid. 
@@ -48,7 +61,7 @@ export default function Videos({room, user}) {
 
             socket.disconnect()
         }
-    }, [vidGrid, chatGrid]);
+    }, [vidGrid]);
 
     const addStream = (video, stream) => {
 
@@ -60,10 +73,10 @@ export default function Videos({room, user}) {
     }
 
     const connectNewUser = (user, stream) => {
-
+        console.log('connecting')
         //making a call. Hello!
         const call = peer.call(user, stream)
-        //now that we have calls, let's store the information that way we can close it later
+        //now that we have calls, let's store the information so that way we can close it later
         allPeers[user] = call
 
         //create teh video element to add and remove
@@ -71,9 +84,10 @@ export default function Videos({room, user}) {
         video.id = user
 
         //now they will send their video so we can add
-        // call.on('stream', userVideoStream => {
-        //     addStream(video, userVideoStream)
-        // })
+
+        call.on('stream', userVideoStream => {
+            addStream(video, userVideoStream)
+        })
 
         call.on('close', () => {
             console.log('closed')
@@ -142,9 +156,10 @@ export default function Videos({room, user}) {
 
     return (
         <div className="welcome-container">
-
+            {response}
             <header className="home-nav">
                 <h1>{room.name}</h1>
+                <p>room id: {room.id}</p>
                 <div id="video-grid" ref={vidGrid}></div>
             </header>
 
