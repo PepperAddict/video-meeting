@@ -5,26 +5,53 @@ export const GET_MESSAGES = gql`
     message {
       id
       content
-      name
+      user
     }
   }
 `;
 
 export const SEND_MESSAGE = gql`
-mutation ($room: String!, $name: String!, $content: String!){
-  postMessage(room: $room, name: $name, content: $content)
-}
+mutation postMessage($user: String!, $content: String!) {
+    postMessage (user: $user, content: $content)
+  }
 `
 
 export const SUB_MESSAGE = gql`
-subscription ($room: String!) {
-  message(room: $room) {
+subscription {
+  message {
     id
     content
-    name
+    user
   }
 }
 `
+
+//debug later
+// export const GET_MESSAGES = gql`
+//   query {
+//     message {
+//       id
+//       content
+//       name
+//     }
+//   }
+// `;
+
+// export const SEND_MESSAGE = gql`
+// mutation ($room: String!, $name: String!, $content: String!){
+//   postMessage(room: $room, name: $name, content: $content)
+// }
+// `
+
+// export const SUB_MESSAGE = gql`
+// subscription ($room: String!) {
+//   message(room: $room) {
+//     id
+//     content
+//     name
+//   }
+// }
+// `
 export const GET_ROOM = gql`
 query ($id: String!){
 	getRoom(id:$id) {

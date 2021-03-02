@@ -1,44 +1,306 @@
 require("dotenv").config();
 const express = require("express");
 const app = express();
+const router = express.Router();
 const path = require("path");
+let room = "test";
+//graphql portion
+const { graphqlHTTP } = require("express-graphql");
+const { execute, subscribe } = require("graphql");
+const { makeExecutableSchema } = require("graphql-tools");
+const Redis = require("ioredis");
+const { altairExpress } = require("altair-express-middleware");
+const { SubscriptionServer } = require("subscriptions-transport-ws");
 
-//webpack server and hot reload stuff
-const webpack = require('./middleware/webpack')
-app.use(webpack)
+const options = {
+  host: process.env.REDIS_HOST,
+  port: 6379,
+  password: process.env.REDIS_PASS,
+};
 
-//manage socket io
-const server = require("http").createServer();
-const io = require("socket.io")(server, {
-  cors: {
-    origin: '*',
+const { RedisPubSub } = require("graphql-redis-subscriptions");
+const pubsub = new RedisPubSub({
+  publisher: new Redis(options),
+  subscriber: new Redis(options),
+});
+const redis = new Redis(options);
+const subscribers = [];
+const onMessagesUpdates = (sub) => subscribers.push(sub);
+
+const getArrayMSG = async (redis, limit = 0) => {
+  let newData = [];
+  await redis
+    .lrange(room, 0, -1)
+    .then((res) => {
+      for (let eachData of res) {
+        newData.push(JSON.parse(eachData));
+      }
+    })
+    .catch((err) => console.log(err));
+
+  return newData;
+};
+
+const types = `
+  type Message {
+    id: ID!
+    user: String!
+    content: String!
   }
+  type Result {
+    id: ID!
+    content: String!
+  }
+  type Query {
+    get(key: String!): String
+    messages: [Message!]
+  }
+  type Mutation {
+    postMessage(user: String!, content: String!): String!
+    set(key: String!, value: String!): Boolean!
+  }
+  type Subscription {
+    message: [Message!]
+    somethingchanged: Result
+    
+  }
+`;
+
+const roots = {
+  Query: {
+    get: (parent, { key }, { redis }) => {
+      try {
+        return redis.get(key);
+      } catch (error) {
+        return null;
+      }
+    },
+    messages: async () => {
+      return getArrayMSG(redis, -1);
+    },
+  },
+
+  Mutation: {
+    postMessage: async (parent, { user, content }) => {
+      const id = (await redis.llen(room)) + 1;
+      const newdata = {
+        id,
+        user,
+        content,
+      };
+      await redis
+        .rpush(room, JSON.stringify(newdata))
+        .catch((err) => console.log("no worky"));
+      subscribers.forEach((fn) => fn());
+      return id;
+    },
+  },
+  Subscription: {
+    message: {
+      subscribe: () => {
+        const SOMETHING_CHANGED_TOPIC = Math.random().toString(36).slice(2, 15);
+
+        // let messages = await getallmsg(redis)
+
+        onMessagesUpdates(async () =>
+          pubsub.publish(SOMETHING_CHANGED_TOPIC, {
+            message: await redis.lrange(room, 0, -1).then((res) => {
+              let newData = [];
+              for (let eachData of res) {
+                newData.push(JSON.parse(eachData));
+              }
+              return newData;
+            }),
+          })
+        );
+        setTimeout(
+          async () =>
+            pubsub.publish(SOMETHING_CHANGED_TOPIC, {
+              message: await redis.lrange(room, 0, -1).then((res) => {
+                let newData = [];
+                for (let eachData of res) {
+                  newData.push(JSON.parse(eachData));
+                }
+                return newData;
+              }),
+            }),
+          0
+        );
+        try {
+          return pubsub.asyncIterator(SOMETHING_CHANGED_TOPIC);
+        } catch (err) {
+          console.log(err);
+          return err;
+        }
+      },
+    },
+  },
+};
+
+const schema = makeExecutableSchema({
+  typeDefs: types,
+  resolvers: roots,
+});
+app.use(
+  "/graphql",
+  graphqlHTTP({
+    schema,
+    graphiql: true,
+    subscriptionsEndpoint: `ws://localhost:3000/subscriptions`,
+    context: { redis, pubsub },
+  })
+);
+
+app.use(
+  "/altair",
+  altairExpress({
+    endpointURL: "/graphql",
+    subscriptionsEndpoint: `ws://localhost:3000/subscriptions`,
+    initialQuery: `query {message {id}}`,
+    context: { redis, pubsub },
+  })
+);
+const subscriptionServer = require("http").createServer();
+subscriptionServer.listen(3000, () => {
+  new SubscriptionServer(
+    {
+      execute,
+      subscribe,
+      schema,
+    },
+    {
+      server: subscriptionServer,
+      path: "/subscriptions",
+      context: { redis, pubsub },
+    }
+  );
 });
 
-require('./middleware/sockets')(io)
-server.listen(3001)
-
-//graphql
-const graphql = require('./middleware/graphql')
-app.use(graphql)
-
+//end graphql portion
 
 app.use(express.urlencoded({ extended: true }));
 
+//manage socket io
 
-//manage our routes
-const index = (res) => {
-  res.sendFile(path.resolve(__dirname, "../dist/index.html"));
+const server = require("http").createServer();
+const io = require("socket.io")(server, {
+  cors: {
+    origin: ["http://localhost:8080"],
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
+
+server.listen(3001);
+
+//middlewware
+const isDev = process.env.NODE_ENV == "development" ? true : false;
+
+//webpack
+const webpack = require("webpack");
+const webpackDevMiddleware = require("webpack-dev-middleware");
+
+const config = require("../config/webpack.config.js");
+const compiler = webpack(config);
+app.use(webpackDevMiddleware(compiler, config.devServer));
+
+if (isDev) {
+  const webpackHotMiddleware = require("webpack-hot-middleware");
+  app.use(webpackHotMiddleware(compiler));
 }
+
 app.get("/", (req, res) => {
-  index(res)
+  res.write(
+    webpackDevMiddleware.fileSystem.readFileSync(
+      path.join(__dirname, "/dist/", "index.html")
+    )
+  );
 });
 
-app.get("/room/:page?", (req, res) => {
-  index(res)
+//creating io and stuff
+app.get("/room", (req, res) => {
+  res.sendFile(path.resolve(__dirname, "../dist/index.html"));
 });
 
-//now for the listening part
+let interval;
+let rooms = {};
 
+io.on("connection", (socket) => {
+  let user;
+
+  if (interval) {
+    clearInterval(interval);
+  }
+  interval = setInterval(() => getApiAndEmit(socket), 1000);
+
+  socket.on("disconnect", () => {
+    socket.to(room).broadcast.emit("user-disconnected", user);
+
+    let discData = {
+      id: Math.floor((Math.random() * 10), + 1),
+      user: "System",
+      content: `${user} has disconnected`
+    }
+
+    redis.rpush(room, JSON.stringify(discData))
+    subscribers.forEach((fn) => fn());
+    if (rooms.hasOwnProperty(room)) {
+      rooms[room].has(user) && rooms[room].delete(user);
+    }
+
+    clearInterval(interval);
+  });
+
+  socket.on("join-room", (roomID, userID) => {
+    room = roomID;
+    user = userID;
+    if (rooms[roomID]) {
+      rooms[roomID].add(user);
+    } else {
+      rooms[roomID] = new Set();
+    }
+    console.log(rooms);
+    socket.join(room);
+    socket.to(room).broadcast.emit("user-connected", user);
+    socket.emit("users", rooms);
+
+    let discData = {
+      id: Math.floor((Math.random() * 10), + 1),
+      user: "System",
+      content: `${user} has connected`
+    }
+
+    redis.rpush(room, JSON.stringify(discData))
+    subscribers.forEach((fn) => fn());
+
+  });
+
+  socket.on("call-user", (data) => {
+    socket.to(data.to).emit("call-made", {
+      offer: data.offer,
+      socket: socket.id,
+    });
+  });
+
+  socket.on("make-answer", (data) => {
+    socket.to(data.to).emit("answer-made", {
+      socket: socket.id,
+      answer: data.answer,
+    });
+  });
+
+  socket.on("send-chat-message", (message) => {
+    const response = new Date();
+    socket.emit("chat-message", {
+      message: { message: message, user: user, timestamp: response },
+    });
+  });
+});
+
+const getApiAndEmit = (socket) => {
+  const response = new Date();
+  // Emitting a new message. Will be consumed by the client
+  socket.emit("FromAPI", response);
+};
 const port = process.env.PORT || 8080;
 app.listen(port, () => console.log(`Express server listening on port ${port}`));
