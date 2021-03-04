@@ -22,7 +22,8 @@ const peer = new Peer(undefined, {
 })
 const socket = io(ENDPOINT);
 import '../../styles/room.styl'
-
+const sdk = require('microsoft-cognitiveservices-speech-sdk');
+const speechConfig = sdk.SpeechConfig.fromSubscription(process.env.SPEECH_KEY, "eastus")
 
 export default function Videos(props) {
     const [response, setResponse] = useState("");
@@ -140,11 +141,31 @@ export default function Videos(props) {
         };
         mediaDevices.getUserMedia(constraintObj).then(stream => {
 
+            let audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput()
+            let recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig)
+            recognizer.startContinuousRecognitionAsync();
+            
+            recognizer.recognized = (s, e) => {
+                console.log(e.result.text)
+
+            };
+            
+            recognizer.canceled = (s, e) => {
+                console.log(`CANCELED: Reason=${e.reason}`);
+                recognizer.stopContinuousRecognitionAsync();
+            };
+            
+            recognizer.sessionStopped = (s, e) => {
+                console.log("\n    Session stopped event.");
+                recognizer.stopContinuousRecognitionAsync();
+            };
+
             //add for ourselves
             addStream(video, stream)
 
 
             peer.on('call', call => {
+
                 console.dir(call)
 
                 //answer a call
