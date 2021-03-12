@@ -1,0 +1,12 @@
+= Welcome!
+
+Hello! Welcome to my vision for a better video meeting! 
+
+== Start the App
+
+`yarn run build` for building the production files
+`yarn run start` Will start the server to port `8080`
+
+Socket.io is hosted on port `3001`
+
+GraphQL Subscription server is hosted on `3000`

@@ -26,21 +26,20 @@ const sdk = require('microsoft-cognitiveservices-speech-sdk');
 const speechConfig = sdk.SpeechConfig.fromSubscription(process.env.SPEECH_KEY, "eastus")
 
 export default function Videos(props) {
+
     const [response, setResponse] = useState("");
 
-    const room = "room1"
-
+    const room = "room1";
     const vidGrid = useRef();
     const chatGrid = useRef();
     const allPeers = {}
 
 
-    
     useEffect(() => {
-
+        socket.emit('join-room', room, props.user)
         peer.on('open', id => {
- 
-            socket.emit('join-room', room, props.user)
+            console.log(id)
+
         })
 
 
@@ -144,17 +143,21 @@ export default function Videos(props) {
             let audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput()
             let recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig)
             recognizer.startContinuousRecognitionAsync();
-            
-            recognizer.recognized = (s, e) => {
-                console.log(e.result.text)
 
+            recognizer.recognized = (s, e) => {
+                
+                if (e.result.text) {
+                 console.log(e.result.text)   
+                socket.emit('join-room', props.user, e.result.text)    
+                }
+                
             };
-            
+
             recognizer.canceled = (s, e) => {
                 console.log(`CANCELED: Reason=${e.reason}`);
                 recognizer.stopContinuousRecognitionAsync();
             };
-            
+
             recognizer.sessionStopped = (s, e) => {
                 console.log("\n    Session stopped event.");
                 recognizer.stopContinuousRecognitionAsync();
@@ -225,7 +228,7 @@ export default function Videos(props) {
                     <input placeholder="send a message" onChange={(e) => setChat(e.target.value)} ref={chatInput}/>
                     <button type="submit">Submit</button>
                 </form> */}
-                
+
 
             </header>
 

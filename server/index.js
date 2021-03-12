@@ -1,7 +1,6 @@
 require("dotenv").config();
 const express = require("express");
 const app = express();
-const router = express.Router();
 const path = require("path");
 let room = "test";
 //graphql portion
@@ -51,13 +50,20 @@ const types = `
     id: ID!
     content: String!
   }
+  type Room {
+    id: ID!
+    name: String!
+  }
   type Query {
     get(key: String!): String
     messages: [Message!]
+    getRoom: Room!
+    getRooms: [Room!]
   }
   type Mutation {
     postMessage(user: String!, content: String!): String!
     set(key: String!, value: String!): Boolean!
+    setRoom(id: ID!, name: String): Room!
   }
   type Subscription {
     message: [Message!]
@@ -236,13 +242,6 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     socket.to(room).broadcast.emit("user-disconnected", user);
 
-    let discData = {
-      id: Math.floor((Math.random() * 10), + 1),
-      user: "System",
-      content: `${user} has disconnected`
-    }
-
-    redis.rpush(room, JSON.stringify(discData))
     subscribers.forEach((fn) => fn());
     if (rooms.hasOwnProperty(room)) {
       rooms[room].has(user) && rooms[room].delete(user);
@@ -274,6 +273,16 @@ io.on("connection", (socket) => {
     subscribers.forEach((fn) => fn());
 
   });
+
+  socket.on('captioned', (user, message) => {
+    let newData = {
+      id: Math.floor((Math.random() * 10), + 1),
+      content: `${user}: ${message}`
+    }
+
+    redis.rpush(room, JSON.stringify(newData))
+    subscribers.forEach((fn) => fn());
+  })
 
   socket.on("call-user", (data) => {
     socket.to(data.to).emit("call-made", {
