@@ -1,4 +1,4 @@
-import React, { Fragment, useRef } from 'react';
+import React, { Fragment, useRef, useState } from 'react';
 import '../../styles/room.styl';
 import Videos from './Videos'
 import Chat from './Chat'
@@ -13,7 +13,7 @@ export default function Room(props) {
   const room = useSelector(state => state.room.value)
   const dispatch = useDispatch()
   const newName = useRef()
-  const showChat = true;
+  const [showChat, setChat] = useState(true)
 
   const changeName = (e) => {
     e.preventDefault()
@@ -31,11 +31,15 @@ export default function Room(props) {
 
         <Fragment>
           <Videos user={user} />
+          <div className="tab-chat">
+          <h2 onClick={() => setChat(true)}>Chat</h2>
+          <h2 onClick={() => setChat(false)}>Tanscribe</h2>
+          </div>
 
           {showChat ? 
-          <Chat user={user} />
+          <Chat user={user} setChat={setChat}/>
           : 
-          <Transcribe user={user} />
+          <Transcribe user={user} setChat={setChat}/>
           }
           
           

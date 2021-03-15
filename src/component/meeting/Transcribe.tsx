@@ -9,20 +9,21 @@ const Messages = ({ user }) => {
     const { data, error } = useSubscription(SUB_TRAN, {variables: {room: room.id}})
 
     if (error) console.log(error)
+    if (data) console.log(data)
     return (
         <>
-            {data ? data.message.map((data, key) => {
+            {/* {data ? data.transcription.map((data, key) => {
 
                 return <p key={key}>{data.user} {data.content}</p>
             }) :
                 'no messages'
-                }
+                } */}
         </>
     )
 
 }
 
-const Transcribe = ({ user }) => {
+const Transcribe = ({ user, setChat }) => {
     const mainChat = useRef()
 
     const scrollToBottom = () => {
@@ -31,12 +32,13 @@ const Transcribe = ({ user }) => {
 
 
     return (
-        <>
+        <div className="transcribe-container">
+            
         <div className="chat-section" >
             <Messages user={user} />
             <p ref={mainChat}>bottom</p>
         </div> 
-</>
+</div>
     )
 }
 

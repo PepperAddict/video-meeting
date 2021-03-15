@@ -21,7 +21,7 @@ const Messages = ({ user, room }) => {
 
 }
 
-const Chat = ({ user }) => {
+const Chat = ({ user, setChat }) => {
     const room = useSelector(state => state.room.value)
     const [text, setText] = useState('')
     const [postMessage] = useMutation(SEND_MESSAGE)
@@ -56,7 +56,7 @@ const Chat = ({ user }) => {
 
     return (
         <div className="chat-container">
-        <h2>Chat</h2>
+
         <div className="chat-section" >
             <Messages user={user} room={room} />
             <p ref={mainChat}>bottom</p>

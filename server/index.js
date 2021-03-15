@@ -194,20 +194,7 @@ const roots = {
         onMessagesUpdates(async () =>
           pubsub.publish(SOMETHING_CHANGED_TOPIC, {
             message: await redis.lrange(room, 0, -1).then( async (res) => {
-              let newData = [];
-              for (let eachData of res) {
-                let each = eachData.split('/')
-                
-                let obj = {
-                  id: each[0],
-                  user: each[1],
-                  content: each[2]
-                }
-            
-                newData.push(obj);
-              }
-              console.log(newData)
-              return newData;
+              return await parseMSG(res)
             }).catch((err) => console.log('two', err)),
           })
         );
@@ -215,19 +202,7 @@ const roots = {
           async () =>
             pubsub.publish(SOMETHING_CHANGED_TOPIC, {
               message: await redis.lrange(room, 0, -1).then(async (res) => {
-                let newData = [];
-                for (let eachData of res) {
-                  let each = eachData.split('/')
-                  
-                  let obj = {
-                    id: each[0],
-                    user: each[1],
-                    content: each[2]
-                  }
-              
-                  newData.push(obj);
-                }
-                return newData;
+                return await parseMSG(res)
               }).catch((err) => console.log('one', err)),
             }),
           0
@@ -244,20 +219,22 @@ const roots = {
 
       subscribe: (payload, {room}) => {
         const SOMETHING_CHANGED_TOPIC = Math.random().toString(36).slice(2, 15);
-        let tranRoom = room + '+t'
+        let tranRoom = room + '+t';
+
 
         onMessagesUpdates(async () =>
           pubsub.publish(SOMETHING_CHANGED_TOPIC, {
-            message: await redis.lrange(tranRoom, 0, -1).then((res) => {
-              return parseMSG(res)
+            message: await redis.lrange(tranRoom, 0, -1).then(async (res) => {
+              console.log(res)
+              return await parseMSG(res)
             }).catch((err) => console.log('three', err)),
           })
         );
         setTimeout(
           async () =>
             pubsub.publish(SOMETHING_CHANGED_TOPIC, {
-              message: await redis.lrange(tranRoom, 0, -1).then((res) => {
-                return parseMSG(res)
+              message: await redis.lrange(tranRoom, 0, -1).then(async (res) => {
+                return await parseMSG(res)
               }).catch((err) => console.log('four', err)),
             }),
           0
