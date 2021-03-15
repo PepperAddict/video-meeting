@@ -7,12 +7,10 @@ export default function Welcome() {
 
 
   return (
-    <div className="welcome-container">
-      <div className="main-container">
-        <h1>Welcome to Video Meet</h1>
+    <div className="container">
         <QuickEntry />
-        <SigninEntry />
-      </div>
+        {/* <SigninEntry /> */}
+
     </div>
   );
 }

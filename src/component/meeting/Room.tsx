@@ -23,7 +23,7 @@ export default function Room(props) {
     return <Redirect to="/" />
   }
   return (
-    <div className="welcome-container">
+    <div className="room-container">
 
       {user ? (
 

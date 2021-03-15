@@ -23,6 +23,15 @@ const Chat = ({ user }) => {
     const [text, setText] = useState('')
     const [postMessage] = useMutation(SEND_MESSAGE)
     const chatText = useRef()
+    const mainChat = useRef()
+
+    const scrollToBottom = () => {
+        mainChat.current.scrollIntoView({behavior: 'smooth'})
+    }
+
+    useEffect(() => {
+        scrollToBottom
+    }, [text])
 
     const sendMessage = (e) => {
         e.preventDefault()
@@ -42,13 +51,16 @@ const Chat = ({ user }) => {
     }
 
     return (
-        <div>
+        <>
+        <div className="chat-section" >
             <Messages user={user} />
-            <form onSubmit={(e) => sendMessage(e)}>
+            <p ref={mainChat}>bottom</p>
+        </div> 
+                   <form onSubmit={(e) => sendMessage(e)} >
                 <input placeholder="send a message" onChange={(e) => setText(e.target.value)} ref={chatText}/>
                 <button type="submit">Submit</button>
             </form>
-        </div>
+</>
     )
 }
 

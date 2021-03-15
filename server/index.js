@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const app = express();
 const path = require("path");
-let room = "test";
+let room;
 //graphql portion
 const { graphqlHTTP } = require("express-graphql");
 const { execute, subscribe } = require("graphql");
@@ -57,18 +57,17 @@ const types = `
   type Query {
     get(key: String!): String
     messages: [Message!]
-    getRoom: Room!
-    getRooms: [Room!]
+    getRoom(id: String!): Room!
+    getRooms: [Room]
   }
   type Mutation {
     postMessage(user: String!, content: String!): String!
     set(key: String!, value: String!): Boolean!
-    setRoom(id: ID!, name: String): Room!
+    setRoom(id: String!, name: String): Boolean!
   }
   type Subscription {
     message: [Message!]
     somethingchanged: Result
-    
   }
 `;
 
@@ -84,6 +83,41 @@ const roots = {
     messages: async () => {
       return getArrayMSG(redis, -1);
     },
+    getRoom: async (parent, { id }) => {
+      //if this room id exists then return true otherwise false
+      //since we also stored a hash, lets get the name
+        let result = {}
+        await redis.get(id)
+          .then((res) => {
+            console.log(res);
+            if (res) {
+              result = {
+                id,
+                name: res,
+              };
+            } else {
+              result = {
+                id: "error-not-found",
+                name: "none",
+              };
+            }
+          })
+          .catch((err) => console.log(err));
+          return result
+    },
+    getRooms: async (parent, { id }) => {
+      //this query is for showing all of the rooms available
+      let rooms = [];
+
+      await redis.smembers("room").then(async (res) => {
+        for (let room of res) {
+          let name = await redis.get(room);
+          rooms.push({ id: room, name });
+        }
+      });
+      return rooms;
+    },
+
   },
 
   Mutation: {
@@ -99,6 +133,19 @@ const roots = {
         .catch((err) => console.log("no worky"));
       subscribers.forEach((fn) => fn());
       return id;
+    },
+    setRoom: async (parent, { id, name }) => {
+
+
+      //keep track of name
+      return await redis.set(id, name).then((res) => {
+
+        if (res === "OK") {
+          return true;
+        } else {
+          return false;
+        }
+      });
     },
   },
   Subscription: {
@@ -224,9 +271,10 @@ app.get("/", (req, res) => {
 });
 
 //creating io and stuff
-app.get("/room", (req, res) => {
+app.get("/room/:page?", (req, res) => {
   res.sendFile(path.resolve(__dirname, "../dist/index.html"));
 });
+
 
 let interval;
 let rooms = {};
@@ -250,13 +298,13 @@ io.on("connection", (socket) => {
     clearInterval(interval);
   });
 
-  socket.on("join-room", (roomID, userID) => {
-    room = roomID;
+  socket.on("join-room", (room, userID) => {
     user = userID;
-    if (rooms[roomID]) {
-      rooms[roomID].add(user);
+    room = room;
+    if (rooms[room]) {
+      rooms[room].add(user);
     } else {
-      rooms[roomID] = new Set();
+      rooms[room] = new Set();
     }
     console.log(rooms);
     socket.join(room);
@@ -275,8 +323,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on('captioned', (user, message) => {
+
     let newData = {
       id: Math.floor((Math.random() * 10), + 1),
+      user: user,
       content: `${user}: ${message}`
     }
 

@@ -4,7 +4,7 @@ const ENDPOINT = "http://127.0.0.1:3001";
 const mediaDevices = navigator.mediaDevices as any
 import Peer from 'peerjs';
 import { useSelector, useDispatch } from 'react-redux';
-
+import RoomBanner from './room_banner'
 
 const peer = new Peer(undefined, {
     config: {
@@ -201,37 +201,18 @@ export default function Videos(props) {
 
     }, [vidGrid])
 
-    //Sending chat 
-    const [chat, setChat] = useState('')
-    const chatInput = useRef('')
-    const sendMessage = (e) => {
 
-        e.preventDefault();
-
-        socket.emit('send-chat-message', chat)
-        setChat('')
-        chatInput.current.value = ""
-    }
 
 
     return (
-        <div className="welcome-container">
+        <div className="video-container">
 
             <header className="home-nav">
-                {response}
+                <RoomBanner room={room}/>
 
                 <div id="video-grid" ref={vidGrid}>
 
                 </div>
-
-                <div id="chat-grid" ref={chatGrid} >
-
-                </div>
-                {/* <form onSubmit={(e) => sendMessage(e)}>
-                    <input placeholder="send a message" onChange={(e) => setChat(e.target.value)} ref={chatInput}/>
-                    <button type="submit">Submit</button>
-                </form> */}
-
 
             </header>
 
