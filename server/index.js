@@ -44,7 +44,6 @@ const parseMSG = async(res) => {
 const postMSG = async (room, user, content) => {
   const id = (await redis.llen(room)) + 1;
   const fullMessage = `${id}/${user}/${content}`
-  console.log(fullMessage)
   await redis
     .rpush(room, fullMessage)
     .catch((err) => console.log("no worky"));
@@ -125,13 +124,14 @@ const roots = {
       //if this room id exists then return true otherwise false
       //since we also stored a hash, lets get the name
         let result = {}
-        await redis.get(id)
+        await redis.lrange(id, 0, 1)
           .then((res) => {
             console.log(res);
+
             if (res) {
               result = {
                 id,
-                name: res,
+                name: res[0],
               };
             } else {
               result = {
@@ -174,9 +174,9 @@ const roots = {
     setRoom: async (parent, { id, name }) => {
       console.log(typeof id, typeof name)
       //keep track of name
-      return await redis.set(id, name).then((res) => {
+      return await redis.lpush(id, name).then((res) => {
         console.log(res)
-        if (res === "OK") {
+        if (res === 1) {
           return true;
         } else {
           return false;
@@ -221,7 +221,6 @@ const roots = {
       subscribe: (payload, {room}) => {
         const SOMETHING_CHANGED_TOPIC = Math.random().toString(36).slice(2, 15);
         let tranRoom = room + '+t'
-        // let messages = await getallmsg(redis)
 
         onMessagesUpdates(async () =>
           pubsub.publish(SOMETHING_CHANGED_TOPIC, {
