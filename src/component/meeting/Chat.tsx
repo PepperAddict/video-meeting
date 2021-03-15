@@ -46,9 +46,6 @@ const Chat = ({ user }) => {
                     content: text,
                     room: room.id
                 }
-            }).then((res) => {
-                console.log(res)
-                console.log(room.id)
             })
         }
 
@@ -58,7 +55,7 @@ const Chat = ({ user }) => {
     }
 
     return (
-        <>
+        <div className="chat-container">
         <h2>Chat</h2>
         <div className="chat-section" >
             <Messages user={user} room={room} />
@@ -68,7 +65,7 @@ const Chat = ({ user }) => {
                 <input placeholder="send a message" onChange={(e) => setText(e.target.value)} ref={chatText}/>
                 <button type="submit">Submit</button>
             </form>
-</>
+</div>
     )
 }
 

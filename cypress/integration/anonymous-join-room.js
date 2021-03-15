@@ -1,7 +1,7 @@
 describe("Quick In and Join room", function() {
 
     it("visit it", function() {
-        cy.visit("/")
+        cy.visit("http://localhost:8080")
     })
     it("quickly enter name and join a room ", function() {
         
@@ -11,6 +11,5 @@ describe("Quick In and Join room", function() {
         cy.get('input[name=room]').type('123')
         cy.get('button').click()
     })
-
 
 })
