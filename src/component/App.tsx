@@ -2,7 +2,7 @@ import 'core-js/stable'
 import 'regenerator-runtime/runtime'
 import React from 'react';
 import ReactDOM from 'react-dom';
-
+import '../styles/app.styl'
 import { BrowserRouter as Router, Route } from 'react-router-dom';
 
 

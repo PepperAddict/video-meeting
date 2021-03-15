@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { io } from "socket.io-client";
 const ENDPOINT = "http://127.0.0.1:3001";
 const mediaDevices = navigator.mediaDevices as any
 import Peer from 'peerjs';
-const random = uuidv4()
+import { useSelector, useDispatch } from 'react-redux';
 
 
 const peer = new Peer(undefined, {
@@ -28,15 +27,16 @@ const speechConfig = sdk.SpeechConfig.fromSubscription(process.env.SPEECH_KEY, "
 export default function Videos(props) {
 
     const [response, setResponse] = useState("");
+    const user = useSelector(state => state.user.value)
+    const room = useSelector(state => state.room.value)
 
-    const room = "room1";
     const vidGrid = useRef();
     const chatGrid = useRef();
     const allPeers = {}
 
 
     useEffect(() => {
-        socket.emit('join-room', room, props.user)
+        socket.emit('join-room', room, user)
         peer.on('open', id => {
             console.log(id)
 
@@ -74,7 +74,10 @@ export default function Videos(props) {
                 }
             }
 
-            socket.disconnect()
+            socket.on('disconnect', () => {
+                socket.emit('user-disconnected', room, user)
+            })
+
         }
     }, [vidGrid, chatGrid]);
 
@@ -148,7 +151,7 @@ export default function Videos(props) {
                 
                 if (e.result.text) {
                  console.log(e.result.text)   
-                socket.emit('join-room', props.user, e.result.text)    
+                socket.emit('captioned', props.user, e.result.text, room)    
                 }
                 
             };

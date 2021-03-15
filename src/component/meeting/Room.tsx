@@ -9,6 +9,7 @@ import { setName } from '../states.js';
 
 export default function Room(props) {
   const user = useSelector(state => state.user.value)
+  const room = useSelector(state => state.room.value)
   const dispatch = useDispatch()
   const newName = useRef()
 
@@ -18,6 +19,9 @@ export default function Room(props) {
     newName.current.value = ""
   }
 
+  if (!user && !room) {
+    return <Redirect to="/" />
+  }
   return (
     <div className="welcome-container">
 
@@ -39,22 +43,3 @@ export default function Room(props) {
   );
 }
 
-// export default function Room(props) {
-//   const user = useSelector(state => state.user.value)
-//   const room = useSelector(state => state.room.value)
-
-//   if (user && room) {
-//     return (
-//       <div className="welcome-container">
-//         <Fragment>
-//           <Videos user={user} room={room} />
-//           <Chat user={user} room={room} />
-//         </Fragment>
-
-//       </div>
-//     );
-//   } else {
-//     return <Redirect to="/" />
-//   }
-
-// }
