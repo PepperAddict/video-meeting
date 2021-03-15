@@ -2,22 +2,20 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useMutation, useSubscription } from '@apollo/client'
 import { useSelector, useDispatch } from 'react-redux';
 import { SEND_MESSAGE, SUB_MESSAGE } from '../../helper/gql.js'
-import Room from './Room.js';
+
 
 const Messages = ({ user, room }) => {
     
     const { data } = useSubscription(SUB_MESSAGE, {variables: {room: room.id}})
-    if (data) console.log(data)
 
     return (
         <>
-        <p>Hello</p>
-            {/* {data ? data.message.map((data, key) => {
+            {data ? data.message.map((data, key) => {
 
                 return <p key={key}>{data.user} {data.content}</p>
             }) :
                 'no messages'
-                } */}
+                }
         </>
     )
 
@@ -48,6 +46,9 @@ const Chat = ({ user }) => {
                     content: text,
                     room: room.id
                 }
+            }).then((res) => {
+                console.log(res)
+                console.log(room.id)
             })
         }
 

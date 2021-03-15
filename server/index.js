@@ -27,16 +27,17 @@ const subscribers = [];
 const onMessagesUpdates = (sub) => subscribers.push(sub);
 
 const parseMSG = async(res) => {
+
   let newData = [];
   for (let eachData of res) {
     let each = eachData.split('/')
-    console.log(each)
+    
     let obj = {
       id: each[0],
       user: each[1],
       content: each[2]
     }
-    console.log(obj)
+
     newData.push(obj);
   }
   return newData;
@@ -124,11 +125,9 @@ const roots = {
       //if this room id exists then return true otherwise false
       //since we also stored a hash, lets get the name
         let result = {}
-        await redis.lrange(id, 0, 1)
+        await redis.lrange('room'+id, 0, 1)
           .then((res) => {
-            console.log(res);
-
-            if (res) {
+            if (res.length > 0) {
               result = {
                 id,
                 name: res[0],
@@ -161,21 +160,21 @@ const roots = {
 
   Mutation: {
     postMessage: async (parent, { user, content, room }) => {
-      let process = postMSG(room, user, content)
+      let process = await postMSG(room, user, content)
       subscribers.forEach((fn) => fn());
       return process;
     },
     postTran: async (parent, { user, content, room }) => {
       let tran = room + '+t'
-     let process = postMSG(tran, user, content)
+     let process = await postMSG(tran, user, content)
       subscribers.forEach((fn) => fn());
       return process;
     },
     setRoom: async (parent, { id, name }) => {
-      console.log(typeof id, typeof name)
+
       //keep track of name
-      return await redis.lpush(id, name).then((res) => {
-        console.log(res)
+      return await redis.lpush('room'+ id, name).then((res) => {
+
         if (res === 1) {
           return true;
         } else {
@@ -194,16 +193,41 @@ const roots = {
 
         onMessagesUpdates(async () =>
           pubsub.publish(SOMETHING_CHANGED_TOPIC, {
-            message: await redis.lrange(room, 0, -1).then((res) => {
-              return parseMSG(res)
+            message: await redis.lrange(room, 0, -1).then( async (res) => {
+              let newData = [];
+              for (let eachData of res) {
+                let each = eachData.split('/')
+                
+                let obj = {
+                  id: each[0],
+                  user: each[1],
+                  content: each[2]
+                }
+            
+                newData.push(obj);
+              }
+              console.log(newData)
+              return newData;
             }).catch((err) => console.log('two', err)),
           })
         );
         setTimeout(
           async () =>
             pubsub.publish(SOMETHING_CHANGED_TOPIC, {
-              message: await redis.lrange(room, 0, -1).then((res) => {
-                return parseMSG(res)
+              message: await redis.lrange(room, 0, -1).then(async (res) => {
+                let newData = [];
+                for (let eachData of res) {
+                  let each = eachData.split('/')
+                  
+                  let obj = {
+                    id: each[0],
+                    user: each[1],
+                    content: each[2]
+                  }
+              
+                  newData.push(obj);
+                }
+                return newData;
               }).catch((err) => console.log('one', err)),
             }),
           0

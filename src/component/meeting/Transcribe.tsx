@@ -9,15 +9,14 @@ const Messages = ({ user }) => {
     const { data, error } = useSubscription(SUB_TRAN, {variables: {room: room.id}})
 
     if (error) console.log(error)
-    if (data) console.log(error)
     return (
         <>
-            {/* {data ? data.message.map((data, key) => {
+            {data ? data.message.map((data, key) => {
 
                 return <p key={key}>{data.user} {data.content}</p>
             }) :
                 'no messages'
-                } */}
+                }
         </>
     )
 
@@ -29,7 +28,6 @@ const Transcribe = ({ user }) => {
     const scrollToBottom = () => {
         mainChat.current.scrollIntoView({behavior: 'smooth'})
     }
-
 
 
     return (
