@@ -2,6 +2,7 @@ import React, { Fragment, useRef } from 'react';
 import '../../styles/room.styl';
 import Videos from './Videos'
 import Chat from './Chat'
+import Transcribe from './Transcribe'
 
 import { Redirect } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux';
@@ -12,6 +13,7 @@ export default function Room(props) {
   const room = useSelector(state => state.room.value)
   const dispatch = useDispatch()
   const newName = useRef()
+  const showChat = true;
 
   const changeName = (e) => {
     e.preventDefault()
@@ -29,7 +31,14 @@ export default function Room(props) {
 
         <Fragment>
           <Videos user={user} />
+
+          {showChat ? 
           <Chat user={user} />
+          : 
+          <Transcribe user={user} />
+          }
+          
+          
         </Fragment>
 
       ) : (

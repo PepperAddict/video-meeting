@@ -26,13 +26,44 @@ const redis = new Redis(options);
 const subscribers = [];
 const onMessagesUpdates = (sub) => subscribers.push(sub);
 
-const getArrayMSG = async (redis, limit = 0) => {
+const parseMSG = async(res) => {
   let newData = [];
+  for (let eachData of res) {
+    let each = eachData.split('/')
+    console.log(each)
+    let obj = {
+      id: each[0],
+      user: each[1],
+      content: each[2]
+    }
+    console.log(obj)
+    newData.push(obj);
+  }
+  return newData;
+}
+const postMSG = async (room, user, content) => {
+  const id = (await redis.llen(room)) + 1;
+  const fullMessage = `${id}/${user}/${content}`
+  console.log(fullMessage)
   await redis
-    .lrange(room, 0, -1)
+    .rpush(room, fullMessage)
+    .catch((err) => console.log("no worky"));
+  return id
+}
+const getArrayMSG = async (redis, limit = 0, tran = false) => {
+  let newData = [];
+  let theRoom = (tran) ? room + '+t' : room
+  await redis
+    .lrange(theRoom, 0, -1)
     .then((res) => {
       for (let eachData of res) {
-        newData.push(JSON.parse(eachData));
+        eachData.split('/')
+        let obj = {
+          id: eachData[0],
+          user: eachData[1],
+          content: eachData[2]
+        }
+        newData.push(obj);
       }
     })
     .catch((err) => console.log(err));
@@ -45,6 +76,7 @@ const types = `
     id: ID!
     user: String!
     content: String!
+    room: String!
   }
   type Result {
     id: ID!
@@ -59,15 +91,18 @@ const types = `
     messages: [Message!]
     getRoom(id: String!): Room!
     getRooms: [Room]
+    transcription: [Message!]
   }
   type Mutation {
-    postMessage(user: String!, content: String!): String!
+    postMessage(user: String!, content: String!, room: String!): String!
+    postTran(user: String!, content: String!, room: String!): String!
     set(key: String!, value: String!): Boolean!
     setRoom(id: String!, name: String): Boolean!
   }
   type Subscription {
-    message: [Message!]
+    message(room: String!): [Message!]
     somethingchanged: Result
+    transcription(room: String!): [Message!]
   }
 `;
 
@@ -82,6 +117,9 @@ const roots = {
     },
     messages: async () => {
       return getArrayMSG(redis, -1);
+    },
+    transcription: async () => {
+      return getArrayMSG(redis, -1, true)
     },
     getRoom: async (parent, { id }) => {
       //if this room id exists then return true otherwise false
@@ -105,6 +143,7 @@ const roots = {
           .catch((err) => console.log(err));
           return result
     },
+
     getRooms: async (parent, { id }) => {
       //this query is for showing all of the rooms available
       let rooms = [];
@@ -121,36 +160,34 @@ const roots = {
   },
 
   Mutation: {
-    postMessage: async (parent, { user, content }) => {
-      const id = (await redis.llen(room)) + 1;
-      const newdata = {
-        id,
-        user,
-        content,
-      };
-      await redis
-        .rpush(room, JSON.stringify(newdata))
-        .catch((err) => console.log("no worky"));
+    postMessage: async (parent, { user, content, room }) => {
+      let process = postMSG(room, user, content)
       subscribers.forEach((fn) => fn());
-      return id;
+      return process;
+    },
+    postTran: async (parent, { user, content, room }) => {
+      let tran = room + '+t'
+     let process = postMSG(tran, user, content)
+      subscribers.forEach((fn) => fn());
+      return process;
     },
     setRoom: async (parent, { id, name }) => {
-
-
+      console.log(typeof id, typeof name)
       //keep track of name
       return await redis.set(id, name).then((res) => {
-
+        console.log(res)
         if (res === "OK") {
           return true;
         } else {
           return false;
         }
-      });
+      }).catch((err) => console.log(err));
     },
   },
   Subscription: {
     message: {
-      subscribe: () => {
+      subscribe: (payload, {room}) => {
+
         const SOMETHING_CHANGED_TOPIC = Math.random().toString(36).slice(2, 15);
 
         // let messages = await getallmsg(redis)
@@ -158,24 +195,16 @@ const roots = {
         onMessagesUpdates(async () =>
           pubsub.publish(SOMETHING_CHANGED_TOPIC, {
             message: await redis.lrange(room, 0, -1).then((res) => {
-              let newData = [];
-              for (let eachData of res) {
-                newData.push(JSON.parse(eachData));
-              }
-              return newData;
-            }),
+              return parseMSG(res)
+            }).catch((err) => console.log('two', err)),
           })
         );
         setTimeout(
           async () =>
             pubsub.publish(SOMETHING_CHANGED_TOPIC, {
               message: await redis.lrange(room, 0, -1).then((res) => {
-                let newData = [];
-                for (let eachData of res) {
-                  newData.push(JSON.parse(eachData));
-                }
-                return newData;
-              }),
+                return parseMSG(res)
+              }).catch((err) => console.log('one', err)),
             }),
           0
         );
@@ -187,6 +216,38 @@ const roots = {
         }
       },
     },
+    transcription: {
+
+      subscribe: (payload, {room}) => {
+        const SOMETHING_CHANGED_TOPIC = Math.random().toString(36).slice(2, 15);
+        let tranRoom = room + '+t'
+        // let messages = await getallmsg(redis)
+
+        onMessagesUpdates(async () =>
+          pubsub.publish(SOMETHING_CHANGED_TOPIC, {
+            message: await redis.lrange(tranRoom, 0, -1).then((res) => {
+              return parseMSG(res)
+            }).catch((err) => console.log('three', err)),
+          })
+        );
+        setTimeout(
+          async () =>
+            pubsub.publish(SOMETHING_CHANGED_TOPIC, {
+              message: await redis.lrange(tranRoom, 0, -1).then((res) => {
+                return parseMSG(res)
+              }).catch((err) => console.log('four', err)),
+            }),
+          0
+        );
+        try {
+          return pubsub.asyncIterator(SOMETHING_CHANGED_TOPIC);
+        } catch (err) {
+          console.log(err);
+          return err;
+        }
+      },
+
+    }
   },
 };
 
@@ -254,6 +315,7 @@ const webpack = require("webpack");
 const webpackDevMiddleware = require("webpack-dev-middleware");
 
 const config = require("../config/webpack.config.js");
+const { SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS } = require("constants");
 const compiler = webpack(config);
 app.use(webpackDevMiddleware(compiler, config.devServer));
 

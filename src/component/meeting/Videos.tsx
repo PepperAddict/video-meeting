@@ -5,7 +5,8 @@ const mediaDevices = navigator.mediaDevices as any
 import Peer from 'peerjs';
 import { useSelector, useDispatch } from 'react-redux';
 import RoomBanner from './room_banner'
-
+import { SEND_TRAN } from '../../helper/gql.js'
+import { useMutation, useSubscription } from '@apollo/client'
 const peer = new Peer(undefined, {
     config: {
         iceServers: [
@@ -25,7 +26,7 @@ const sdk = require('microsoft-cognitiveservices-speech-sdk');
 const speechConfig = sdk.SpeechConfig.fromSubscription(process.env.SPEECH_KEY, "eastus")
 
 export default function Videos(props) {
-
+    const [postMessage] = useMutation(SEND_TRAN)
     const [response, setResponse] = useState("");
     const user = useSelector(state => state.user.value)
     const room = useSelector(state => state.room.value)
@@ -151,7 +152,13 @@ export default function Videos(props) {
                 
                 if (e.result.text) {
                  console.log(e.result.text)   
-                socket.emit('captioned', props.user, e.result.text, room)    
+                postMessage({
+                    variables: {
+                        user, 
+                        content: e.result.text,
+                        room: room.id
+                    }
+                })   
                 }
                 
             };
