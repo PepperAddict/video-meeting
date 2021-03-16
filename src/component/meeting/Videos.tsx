@@ -67,19 +67,19 @@ const peer = new Peer(user, {
         //for text chat 
 
 
-        // return () => {
-        //     //when leaving, disconnect from socket and remove child elements of vid Grid. 
-        //     if (vidGrid.current) {
-        //         while (vidGrid.current.lastElementChild) {
-        //             vidGrid.current.removeChild(vidGrid.current.lastElementChild)
-        //         }
-        //     }
+        return () => {
+            //when leaving, disconnect from socket and remove child elements of vid Grid. 
+            if (vidGrid.current) {
+                while (vidGrid.current.lastElementChild) {
+                    vidGrid.current.removeChild(vidGrid.current.lastElementChild)
+                }
+            }
 
-        //     socket.on('disconnect', () => {
-        //         socket.emit('user-disconnected', room, user)
-        //     })
+            socket.on('disconnect', () => {
+                socket.emit('user-disconnected', room, user)
+            })
 
-        // }
+        }
     }, [vidGrid]);
 
     const addStream = (video, stream) => {
@@ -140,14 +140,14 @@ const peer = new Peer(user, {
             recognizer.recognized = (s, e) => {
 
                 if (e.result.text) {
-                    console.log(e.result.text)
-                    // postMessage({
-                    //     variables: {
-                    //         user, 
-                    //         content: e.result.text,
-                    //         room: room.id
-                    //     }
-                    // })   
+
+                    postMessage({
+                        variables: {
+                            user, 
+                            content: e.result.text,
+                            room: room.id
+                        }
+                    })   
                 }
 
             };
