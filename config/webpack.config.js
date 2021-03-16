@@ -24,11 +24,11 @@ module.exports = {
     extensions: [".ts", ".tsx", ".js", "jsx"],
   },
   output: {
-    filename: "bundle-script.js",
+    filename: "[name]-bundle-script.js",
     path: path.resolve(__dirname, "../dist/"),
     publicPath: "/",
-    hotUpdateChunkFilename: "hot-update.js",
-    hotUpdateMainFilename: "hot-update.json",
+    hotUpdateChunkFilename: "[name]-hot-update.js",
+    hotUpdateMainFilename: "[name]-hot-update.json",
   },
   devServer: {
     publicPath: "/",
@@ -109,7 +109,7 @@ module.exports = {
       systemvars: true
     }),
     new MiniCSSExtractPlugin({
-      filename: "bundled-style.css",
+      filename: "[name]-bundled-style.css",
       chunkFilename: "[id].css",
     }),
     // new CleanWebpackPlugin(),

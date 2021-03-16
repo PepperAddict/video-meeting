@@ -12,6 +12,35 @@ video {
     box-sizing: border-box;
     padding: 30px;
 
-.chat-section
-    max-height: 90vh;
-    overflow-y: scroll;
+
+
+.tab-chat 
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    h2 
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0px;
+        padding: 5px;
+        border-radius: 15px 15px 0 0;
+    .active 
+        background: #F9F9F9
+    .inactive
+        cursor: pointer;
+
+.chat-container, .transcribe-container
+    height: 100%;
+    background: #F9F9F9;
+    .chat-section
+        max-height: 600px;
+        overflow-y: scroll;
+        height: 100%;
+        padding: 10px;
+        div 
+            display: flex;
+            grid-gap: 10px;
+            align-items: center;
+            background: #EEEEEE;
+            margin-bottom: 5px;
+            padding: 5px;

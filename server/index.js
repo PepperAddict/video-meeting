@@ -11,6 +11,9 @@ const Redis = require("ioredis");
 const { altairExpress } = require("altair-express-middleware");
 const { SubscriptionServer } = require("subscriptions-transport-ws");
 
+const {PeerServer} = require('peer')
+const peerServer = PeerServer({port: 9000, path: '/peerjs'})
+
 const options = {
   host: process.env.REDIS_HOST,
   port: 6379,
@@ -143,7 +146,6 @@ const roots = {
           .catch((err) => console.log(err));
           return result
     },
-
     getRooms: async (parent, { id }) => {
       //this query is for showing all of the rooms available
       let rooms = [];
@@ -371,27 +373,19 @@ io.on("connection", (socket) => {
     clearInterval(interval);
   });
 
-  socket.on("join-room", (room, userID) => {
-    user = userID;
-    room = room;
+  socket.on("join-room", (room, user) => {
+  socket.join(room);
+    console.log('user joined')
     if (rooms[room]) {
       rooms[room].add(user);
     } else {
       rooms[room] = new Set();
+      rooms[room].add(user)
     }
     console.log(rooms);
-    socket.join(room);
-    socket.to(room).broadcast.emit("user-connected", user);
-    socket.emit("users", rooms);
-
-    let discData = {
-      id: Math.floor((Math.random() * 10), + 1),
-      user: "System",
-      content: `${user} has connected`
-    }
-
-    redis.rpush(room, JSON.stringify(discData))
-    subscribers.forEach((fn) => fn());
+    
+    
+socket.to(room).emit("user-connected", user);
 
   });
 

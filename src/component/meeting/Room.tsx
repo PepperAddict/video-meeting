@@ -1,12 +1,14 @@
 import React, { Fragment, useRef, useState } from 'react';
 import '../../styles/room.styl';
-import Videos from './Videos'
+import loadable from '@loadable/component'
+const Videos = loadable(() => import('./Videos')) 
 import Chat from './Chat'
 import Transcribe from './Transcribe'
 
 import { Redirect } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux';
 import { setName } from '../states.js';
+
 
 export default function Room(props) {
   const user = useSelector(state => state.user.value)
@@ -31,16 +33,20 @@ export default function Room(props) {
 
         <Fragment>
           <Videos user={user} />
-          <div className="tab-chat">
-          <h2 onClick={() => setChat(true)}>Chat</h2>
-          <h2 onClick={() => setChat(false)}>Tanscribe</h2>
+
+          <div className="full-chat-container">
+                     <div className="tab-chat">
+          <h2 className={(showChat) ? 'active' : 'inactive'} onClick={() => setChat(true)}>Chat</h2>
+          <h2 className={(!showChat) ? 'active' : 'inactive'} onClick={() => setChat(false)}>Tanscribe</h2>
           </div>
 
           {showChat ? 
-          <Chat user={user} setChat={setChat}/>
+          <Chat user={user} />
           : 
-          <Transcribe user={user} setChat={setChat}/>
-          }
+          <Transcribe user={user}/>
+          } 
+          </div>
+
           
           
         </Fragment>

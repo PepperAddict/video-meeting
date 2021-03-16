@@ -6,20 +6,9 @@ import Peer from 'peerjs';
 import { useSelector, useDispatch } from 'react-redux';
 import RoomBanner from './room_banner'
 import { SEND_TRAN } from '../../helper/gql.js'
-import { useMutation, useSubscription } from '@apollo/client'
-const peer = new Peer(undefined, {
-    config: {
-        iceServers: [
-            { urls: "stun:stun.services.mozilla.com" },
-            { urls: "stun:stun.l.google.com:19302" },
-            {
-                urls: "turn:numb.viagenie.ca",
-                credential: "qwertyuiop",
-                username: "ozqgvaadhmyrakdwod@awdrt.org",
-            },
-        ],
-    }
-})
+import { useMutation } from '@apollo/client'
+
+
 const socket = io(ENDPOINT);
 import '../../styles/room.styl'
 const sdk = require('microsoft-cognitiveservices-speech-sdk');
@@ -32,15 +21,31 @@ export default function Videos(props) {
     const room = useSelector(state => state.room.value)
 
     const vidGrid = useRef();
-    const chatGrid = useRef();
     const allPeers = {}
+
+const peer = new Peer(user, {
+    host: 'localhost',
+    port: 9000,
+    path: '/peerjs',
+    config: {
+        iceServers: [
+            { urls: 'stun:custom.stun.server:3478' },
+            { urls: "stun:stun.services.mozilla.com" },
+            { urls: "stun:stun.l.google.com:19302" },
+            {
+                urls: "turn:numb.viagenie.ca",
+                credential: "qwertyuiop",
+                username: "ozqgvaadhmyrakdwod@awdrt.org",
+            },
+        ],
+    }
+})
 
 
     useEffect(() => {
-        socket.emit('join-room', room, user)
-        peer.on('open', id => {
-            console.log(id)
 
+        peer.on('open', function (id) {
+            socket.emit('join-room', room.id, id)
         })
 
 
@@ -55,35 +60,29 @@ export default function Videos(props) {
 
 
         peer.on('connection', (conn) => {
+
             console.log(conn)
         })
 
         //for text chat 
 
-        socket.on('chat-message', (data) => {
-            console.log(data)
-            const p = document.createElement('p')
-            p.innerHTML = data.message.message
-            chatGrid.current.append(p)
-        })
 
-        return () => {
-            //when leaving, disconnect from socket and remove child elements of vid Grid. 
-            if (vidGrid.current) {
-                while (vidGrid.current.lastElementChild) {
-                    vidGrid.current.removeChild(vidGrid.current.lastElementChild)
-                }
-            }
+        // return () => {
+        //     //when leaving, disconnect from socket and remove child elements of vid Grid. 
+        //     if (vidGrid.current) {
+        //         while (vidGrid.current.lastElementChild) {
+        //             vidGrid.current.removeChild(vidGrid.current.lastElementChild)
+        //         }
+        //     }
 
-            socket.on('disconnect', () => {
-                socket.emit('user-disconnected', room, user)
-            })
+        //     socket.on('disconnect', () => {
+        //         socket.emit('user-disconnected', room, user)
+        //     })
 
-        }
-    }, [vidGrid, chatGrid]);
+        // }
+    }, [vidGrid]);
 
     const addStream = (video, stream) => {
-
         video.srcObject = stream;
         video.onloadedmetadata = (ev) => {
             video.play()
@@ -91,42 +90,30 @@ export default function Videos(props) {
         vidGrid.current.append(video)
     }
 
-    const connectNewUser = (user, stream) => {
+    const connectNewUser = (id, stream) => {
 
         //making a call. Hello!
-        const call = peer.call(user, stream)
+        const call = peer.call(id, stream)
+        console.log(call)
         //now that we have calls, let's store the information that way we can close it later
-        allPeers[user] = call
+        allPeers[id] = call
 
         //create teh video element to add and remove
         const video = document.createElement('video')
-        video.id = user
+        video.id = id
 
         //now they will send their video so we can add
-        // call.on('stream', userVideoStream => {
-        //     addStream(video, userVideoStream)
-        // })
+        call.on('stream', userVideoStream => {
+            console.log('accept stream')
+            addStream(video, userVideoStream)
+        })
 
         call.on('close', () => {
             console.log('closed')
             video.remove()
         })
 
-        //let's do clean up here to avoid glitches 
-
     }
-    const initiateChat = (user) => {
-        const conn = peer.connect(user)
-
-        conn.on('open', () => {
-            conn.on('data', (data) => {
-                console.log(data)
-            })
-        })
-
-        conn.send('hello')
-    }
-
 
 
 
@@ -143,24 +130,26 @@ export default function Videos(props) {
             audio: true
         };
         mediaDevices.getUserMedia(constraintObj).then(stream => {
+            //add for ourselves
+            addStream(video, stream)
 
             let audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput()
             let recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig)
             recognizer.startContinuousRecognitionAsync();
 
             recognizer.recognized = (s, e) => {
-                
+
                 if (e.result.text) {
-                 console.log(e.result.text)   
-                postMessage({
-                    variables: {
-                        user, 
-                        content: e.result.text,
-                        room: room.id
-                    }
-                })   
+                    console.log(e.result.text)
+                    // postMessage({
+                    //     variables: {
+                    //         user, 
+                    //         content: e.result.text,
+                    //         room: room.id
+                    //     }
+                    // })   
                 }
-                
+
             };
 
             recognizer.canceled = (s, e) => {
@@ -173,8 +162,7 @@ export default function Videos(props) {
                 recognizer.stopContinuousRecognitionAsync();
             };
 
-            //add for ourselves
-            addStream(video, stream)
+
 
 
             peer.on('call', call => {
@@ -188,8 +176,8 @@ export default function Videos(props) {
                 const videoTwo = document.createElement('video')
                 videoTwo.id = call.peer
 
-
                 call.on('stream', userVideoStream => {
+                    console.log('answering stream')
                     addStream(videoTwo, userVideoStream)
                 })
 
@@ -199,9 +187,9 @@ export default function Videos(props) {
 
             })
 
-            socket.on('user-connected', user => {
-                connectNewUser(user, stream)
-                initiateChat(user)
+            socket.on('user-connected', id => {
+                console.log('user connected:' + id)
+                connectNewUser(id, stream)
             })
 
         })
@@ -215,7 +203,7 @@ export default function Videos(props) {
         <div className="video-container">
 
             <header className="home-nav">
-                <RoomBanner room={room}/>
+                <RoomBanner room={room} />
 
                 <div id="video-grid" ref={vidGrid}>
 

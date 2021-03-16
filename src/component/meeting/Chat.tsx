@@ -6,26 +6,7 @@ import { SEND_MESSAGE, SUB_MESSAGE } from '../../helper/gql.js'
 
 const Messages = ({ user, room }) => {
     
-    const { data } = useSubscription(SUB_MESSAGE, {variables: {room: room.id}})
-
-    return (
-        <>
-            {data ? data.message.map((data, key) => {
-
-                return <p key={key}>{data.user} {data.content}</p>
-            }) :
-                'no messages'
-                }
-        </>
-    )
-
-}
-
-const Chat = ({ user, setChat }) => {
-    const room = useSelector(state => state.room.value)
-    const [text, setText] = useState('')
-    const [postMessage] = useMutation(SEND_MESSAGE)
-    const chatText = useRef()
+    const { data, error } = useSubscription(SUB_MESSAGE, {variables: {room: room.id}})
     const mainChat = useRef()
 
     const scrollToBottom = () => {
@@ -33,13 +14,37 @@ const Chat = ({ user, setChat }) => {
     }
 
     useEffect(() => {
-        scrollToBottom
-    }, [text])
+        scrollToBottom()
+    }, [data])
+
+    if (error) console.log(error)
+
+    return (
+        <>
+            {data ? data.message.map((data, key) => {
+
+                return <div key={key}><span className="user">{data.user}</span>: <div className="content">{data.content}</div></div>
+            }) :
+                'no messages'
+                }
+        <p className="hide-me" ref={mainChat}>bottom</p>
+        </>
+    )
+
+}
+
+const Chat = ({ user}) => {
+    const room = useSelector(state => state.room.value)
+    const [text, setText] = useState('')
+    const [postMessage] = useMutation(SEND_MESSAGE)
+    const chatText = useRef()
+
 
     const sendMessage = (e) => {
         e.preventDefault()
-
-        if (text.length >0) {
+        console.log(text)
+        if (text.length > 0) {
+            console.log('sending')
             postMessage({
                 variables: {
                     user, 
@@ -59,11 +64,11 @@ const Chat = ({ user, setChat }) => {
 
         <div className="chat-section" >
             <Messages user={user} room={room} />
-            <p ref={mainChat}>bottom</p>
+            
         </div> 
                    <form onSubmit={(e) => sendMessage(e)} >
                 <input placeholder="send a message" onChange={(e) => setText(e.target.value)} ref={chatText}/>
-                <button type="submit">Submit</button>
+                <button className="right-button" type="submit">Send</button>
             </form>
 </div>
     )
