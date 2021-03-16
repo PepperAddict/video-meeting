@@ -98,6 +98,7 @@ const types = `
     postTran(user: String!, content: String!, room: String!): String!
     set(key: String!, value: String!): Boolean!
     setRoom(id: String!, name: String): Boolean!
+    editTran(key: Int!, user: String!, content: String!, room: String!): Boolean!
   }
   type Subscription {
     message(room: String!): [Message!]
@@ -170,6 +171,19 @@ const roots = {
       subscribers.forEach((fn) => fn());
       return process;
     },
+    editTran: async (parent, {key, user, content, room}) => {
+      let tran = room + '+t'
+      let theKey = parseInt(key)
+      let value = `${key + 1}/${user}/${content}`
+      subscribers.forEach((fn) => fn());
+      return await redis.lset(tran, theKey, value).then((res) => {
+        if (res === "OK") {
+          return true
+        } else {
+          return false
+        }
+      })
+    },
     setRoom: async (parent, { id, name }) => {
 
       //keep track of name
@@ -188,8 +202,6 @@ const roots = {
       subscribe: (payload, {room}) => {
 
         const SOMETHING_CHANGED_TOPIC = Math.random().toString(36).slice(2, 15);
-
-        // let messages = await getallmsg(redis)
 
         onMessagesUpdates(async () =>
           pubsub.publish(SOMETHING_CHANGED_TOPIC, {
@@ -221,11 +233,10 @@ const roots = {
         const SOMETHING_CHANGED_TOPIC = Math.random().toString(36).slice(2, 15);
         let tranRoom = room + '+t';
 
-
         onMessagesUpdates(async () =>
           pubsub.publish(SOMETHING_CHANGED_TOPIC, {
-            message: await redis.lrange(tranRoom, 0, -1).then(async (res) => {
-              console.log(res)
+            transcription: await redis.lrange(tranRoom, 0, -1).then(async (res) => {
+
               return await parseMSG(res)
             }).catch((err) => console.log('three', err)),
           })
@@ -233,7 +244,7 @@ const roots = {
         setTimeout(
           async () =>
             pubsub.publish(SOMETHING_CHANGED_TOPIC, {
-              message: await redis.lrange(tranRoom, 0, -1).then(async (res) => {
+              transcription: await redis.lrange(tranRoom, 0, -1).then(async (res) => {
                 return await parseMSG(res)
               }).catch((err) => console.log('four', err)),
             }),

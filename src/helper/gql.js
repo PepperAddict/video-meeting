@@ -32,7 +32,7 @@ subscription ($room: String!) {
 `
 
 export const SUB_TRAN = gql`
-subscription  ($room: String!) {
+subscription ($room: String!) {
   transcription(room: $room) {
     id
     content
@@ -52,5 +52,11 @@ query ($id: String!){
 export const SET_ROOM = gql`
 mutation ($id: String!, $name: String!){
 	setRoom(id:$id, name: $name)
+}
+`
+
+export const EDIT_TRAN = gql`
+mutation ($key: Int!, $user: String!, $content: String!, $room: String!){
+  editTran(key: $key, user: $user, content: $content, room: $room)
 }
 `

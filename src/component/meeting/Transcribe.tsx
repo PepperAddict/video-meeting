@@ -1,23 +1,47 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useMutation, useSubscription } from '@apollo/client'
-import { useSelector, useDispatch } from 'react-redux';
-import { SEND_TRAN, SUB_TRAN } from '../../helper/gql.js'
+import { useSubscription, useMutation } from '@apollo/client'
+import { useSelector } from 'react-redux';
+import { SUB_TRAN, EDIT_TRAN } from '../../helper/gql.js'
 
 const Messages = ({ user }) => {
     const room = useSelector(state => state.room.value)
-    console.log(room)
+    const [text, setText] = useState('')
+    const [editTran] = useMutation(EDIT_TRAN)
     const { data, error } = useSubscription(SUB_TRAN, {variables: {room: room.id}})
 
     if (error) console.log(error)
-    if (data) console.log(data)
+    const editableContent = (e, data) => {
+            const newData = {
+                key: data.id -1,
+                user: data.user, 
+                content: e.target.innerHTML,
+                room: room.id
+            }
+
+            editTran({variables: newData}).then((res) => {
+                console.log(res)
+            })
+    }
+
+    const customize = (e, data) => {
+
+        if (e.key === 'Enter') {
+            e.preventDefault()
+            editableContent(e, data)
+        }
+    }
+
     return (
         <>
-            {/* {data ? data.transcription.map((data, key) => {
+            {data ? data.transcription.map((data, key) => {
 
-                return <p key={key}>{data.user} {data.content}</p>
+                return <div key={key} >
+                     <span className="name">{data.user}</span>
+                     <div tabIndex={key} id={key} contentEditable="true" onKeyDown={(e) => customize(e, data)} suppressContentEditableWarning="true" onBlur={(e) => editableContent(e, data)}>{data.content}</div>
+                     </div>
             }) :
                 'no messages'
-                } */}
+                }
         </>
     )
 
